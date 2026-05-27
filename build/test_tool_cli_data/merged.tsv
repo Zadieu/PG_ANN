@@ -1,0 +1,9 @@
+approx_kind	approx_backend	top_k	beam_width	l_search	queries	elapsed_ms	average_latency_ms	qps	async_reads	pages_completed	resident_expansions	approx_evals	exact_evals	n_ios	n_cmps	n_hops	cpu_us	io_us	range_stop	average_recall	first_query_result_ids
+full	full_precision	4	2	6	3	4.270946	1.423649	702.420494	3	3	20	35	20	3	35	20	245	67	0	1.000000	0,1,2,11
+full	full_precision	4	3	6	3	4.180027	1.393342	717.698713	3	3	20	35	20	3	35	20	180	29	0	1.000000	0,1,2,11
+pq	pipeann_pq	4	2	6	3	8.331652	2.777217	360.072648	3	3	21	33	21	3	33	21	174	19	0	1.000000	0,1,2,3
+pq	pipeann_pq	4	3	6	3	8.566646	2.855549	350.195397	3	3	21	33	21	3	33	21	147	20	0	1.000000	0,1,2,3
+full	full_precision	4	2	6	3	4.270946	1.423649	702.420494	3	3	20	35	20	3	35	20	245	67	0	1.000000	0,1,2,11
+full	full_precision	4	3	6	3	4.180027	1.393342	717.698713	3	3	20	35	20	3	35	20	180	29	0	1.000000	0,1,2,11
+pq	pipeann_pq	4	2	6	3	8.331652	2.777217	360.072648	3	3	21	33	21	3	33	21	174	19	0	1.000000	0,1,2,3
+pq	pipeann_pq	4	3	6	3	8.566646	2.855549	350.195397	3	3	21	33	21	3	33	21	147	20	0	1.000000	0,1,2,3

@@ -1,0 +1,14 @@
+index=test_tool_cli_data/tool_cli_graph_relayout.index
+pipeann_base_data=test_tool_cli_data/tool_cli.bin
+full_data=test_tool_cli_data/tool_cli.bin
+pipeann_pq_pivots=test_tool_cli_data/tool_cli_pq_pivots.bin
+pipeann_pq_compressed=test_tool_cli_data/tool_cli_pq_compressed.bin
+query_count=3
+top_k=4
+recall_at_k=1
+beam_widths=2,3
+l_search_values=6
+approx_kinds=full,pq
+summary_tsv=test_tool_cli_data/experiment/summary.tsv
+ground_truth=test_tool_cli_data/experiment/ground_truth.txt
+ground_truth_width=4

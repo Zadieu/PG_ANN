@@ -1,0 +1,7 @@
+train_queries=3
+range_base=3
+r_ood=1
+l_ood=1500
+nodes_with_refine=1
+total_refine_edges=1
+max_eh=65535

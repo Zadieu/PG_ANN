@@ -1,0 +1,5 @@
+baseline_label	candidate_label	approx_kind	top_k	beam_width	l_search	queries	baseline_qps	candidate_qps	delta_qps	baseline_average_latency_ms	candidate_average_latency_ms	delta_average_latency_ms	baseline_average_recall	candidate_average_recall	delta_average_recall	delta_async_reads	delta_pages_completed	delta_resident_expansions	delta_approx_evals	delta_exact_evals	delta_n_ios	delta_n_cmps	delta_n_hops	delta_cpu_us	delta_io_us
+baseline	candidate	full	4	2	6	3	702.420494	702.420494	0.000000	1.423649	1.423649	0.000000	1.000000	1.000000	0.000000	0	0	0	0	0	0	0	0	0	0
+baseline	candidate	full	4	3	6	3	717.698713	717.698713	0.000000	1.393342	1.393342	0.000000	1.000000	1.000000	0.000000	0	0	0	0	0	0	0	0	0	0
+baseline	candidate	pq	4	2	6	3	360.072648	360.072648	0.000000	2.777217	2.777217	0.000000	1.000000	1.000000	0.000000	0	0	0	0	0	0	0	0	0	0
+baseline	candidate	pq	4	3	6	3	350.195397	350.195397	0.000000	2.855549	2.855549	0.000000	1.000000	1.000000	0.000000	0	0	0	0	0	0	0	0	0	0
