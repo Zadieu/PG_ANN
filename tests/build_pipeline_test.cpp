@@ -257,6 +257,7 @@ int main() {
 
   assert(!results.empty());
   assert(results.front().id < artifacts.num_points);
+  assert(stats.bytes_read > 0);
   assert(stats.approx_distance_evals >= stats.exact_distance_evals);
 
   return 0;

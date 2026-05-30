@@ -20,6 +20,14 @@ void PrintUsage() {
       << "  --beam_width N\n"
       << "  --l_search N\n"
       << "  --mem_l N\n"
+      << "  --graph_cache_bytes N\n"
+      << "  --graph_cache_policy entry_bfs|page_layout\n"
+      << "  --refine_k N\n"
+      << "  --refine_ratio F\n"
+      << "  --defer_exact_until_refinement\n"
+      << "  --scheduler_policy conservative|bounded|aggressive\n"
+      << "  --scheduler_policy_limit N\n"
+      << "  --dynamic_beam_policy adaptive|fixed\n"
       << "  --range_partial F\n"
       << "  --approx_kind full|pq (default: pq)\n"
       << "  --pq_codebook PATH (optional PQ pivots override)\n"
@@ -30,6 +38,14 @@ void PrintUsage() {
 uint32_t ParseUint32(const std::string &name, const std::string &value) {
   try {
     return static_cast<uint32_t>(std::stoul(value));
+  } catch (const std::exception &) {
+    throw std::runtime_error("invalid integer value for " + name);
+  }
+}
+
+uint64_t ParseUint64(const std::string &name, const std::string &value) {
+  try {
+    return static_cast<uint64_t>(std::stoull(value));
   } catch (const std::exception &) {
     throw std::runtime_error("invalid integer value for " + name);
   }
@@ -113,6 +129,40 @@ hybrid::SearchToolConfig ParseArgs(int argc, char **argv) {
       config.search_config.mem_l = ParseUint32("--mem_l", need_value("--mem_l"));
       continue;
     }
+    if (arg == "--graph_cache_bytes") {
+      config.search_config.graph_cache_budget_bytes =
+          ParseUint64("--graph_cache_bytes", need_value("--graph_cache_bytes"));
+      continue;
+    }
+    if (arg == "--graph_cache_policy") {
+      config.search_config.graph_cache_policy = hybrid::ParseGraphCacheBuildPolicy(need_value("--graph_cache_policy"));
+      continue;
+    }
+    if (arg == "--refine_k") {
+      config.search_config.refine_k = ParseUint32("--refine_k", need_value("--refine_k"));
+      continue;
+    }
+    if (arg == "--refine_ratio") {
+      config.search_config.refine_ratio = ParseFloat("--refine_ratio", need_value("--refine_ratio"));
+      continue;
+    }
+    if (arg == "--defer_exact_until_refinement") {
+      config.search_config.defer_exact_until_refinement = true;
+      continue;
+    }
+    if (arg == "--scheduler_policy") {
+      config.search_config.scheduler_policy = hybrid::ParseSchedulerPolicy(need_value("--scheduler_policy"));
+      continue;
+    }
+    if (arg == "--scheduler_policy_limit") {
+      config.search_config.scheduler_policy_limit =
+          ParseUint32("--scheduler_policy_limit", need_value("--scheduler_policy_limit"));
+      continue;
+    }
+    if (arg == "--dynamic_beam_policy") {
+      config.search_config.dynamic_beam_policy = hybrid::ParseDynamicBeamPolicy(need_value("--dynamic_beam_policy"));
+      continue;
+    }
     if (arg == "--range_partial") {
       config.search_config.range_partial = ParseFloat("--range_partial", need_value("--range_partial"));
       continue;
@@ -165,6 +215,16 @@ int main(int argc, char **argv) {
     const hybrid::SearchToolSummary summary = hybrid::RunSearchTool(config);
     std::cout << "Search completed\n";
     std::cout << "  approx_backend=" << summary.approx_backend_name << '\n';
+    std::cout << "  graph_cache_policy="
+              << hybrid::GraphCacheBuildPolicyName(config.search_config.graph_cache_policy)
+              << " refine_k=" << config.search_config.refine_k
+              << " refine_ratio=" << config.search_config.refine_ratio
+              << " defer_exact_until_refinement="
+              << (config.search_config.defer_exact_until_refinement ? 1 : 0)
+              << " scheduler_policy=" << hybrid::SchedulerPolicyName(config.search_config.scheduler_policy)
+              << " scheduler_policy_limit=" << config.search_config.scheduler_policy_limit
+              << " dynamic_beam_policy="
+              << hybrid::DynamicBeamPolicyName(config.search_config.dynamic_beam_policy) << '\n';
     std::cout << "  results:\n";
     for (const auto &result : summary.results) {
       std::cout << "    id=" << result.id << " dist=" << result.distance << '\n';
@@ -179,6 +239,36 @@ int main(int argc, char **argv) {
               << " n_hops=" << summary.stats.n_hops
               << " cpu_us=" << summary.stats.cpu_us
               << " io_us=" << summary.stats.io_us
+              << " bytes_read=" << summary.stats.bytes_read
+              << " page_resident_hits=" << summary.stats.page_resident_hits
+              << " graph_replicated_hits=" << summary.stats.graph_replicated_hits
+              << " graph_cache_hits=" << summary.stats.graph_cache_hits
+              << " graph_cache_misses=" << summary.stats.graph_cache_misses
+              << " graph_cache_expansions=" << summary.stats.graph_cache_expansions
+              << " graph_cache_avoided_reads=" << summary.stats.graph_cache_avoided_reads
+              << " graph_cache_resident_bytes=" << summary.stats.graph_cache_resident_bytes
+              << " graph_cache_entries=" << summary.stats.graph_cache_entries
+              << " graph_cache_build_page_reads=" << summary.stats.graph_cache_build_page_reads
+              << " exact_from_page=" << summary.stats.exact_from_page
+              << " exact_from_payload=" << summary.stats.exact_from_payload
+              << " refinement_candidates=" << summary.stats.refinement_candidates
+              << " refinement_reads=" << summary.stats.refinement_reads
+              << " approximate_candidates=" << summary.stats.approximate_candidates
+              << " refinement_bound=" << summary.stats.refinement_bound
+              << " refinement_already_exact=" << summary.stats.refinement_already_exact
+              << " refinement_exactified=" << summary.stats.refinement_exactified
+              << " deferred_exact_candidates=" << summary.stats.deferred_exact_candidates
+              << " read_hits_in_pool=" << summary.stats.read_hits_in_pool
+              << " read_waste_out_of_pool=" << summary.stats.read_waste_out_of_pool
+              << " max_inflight_reads=" << summary.stats.max_inflight_reads
+              << " max_beam_width=" << summary.stats.max_beam_width
+              << " beam_width_increases=" << summary.stats.beam_width_increases
+              << " scheduler_policy_limit_observed=" << summary.stats.scheduler_policy_limit
+              << " scheduler_pending_max=" << summary.stats.scheduler_pending_max
+              << " scheduler_ready_unexpanded_max=" << summary.stats.scheduler_ready_unexpanded_max
+              << " scheduler_limit_hits=" << summary.stats.scheduler_limit_hits
+              << " poll_calls=" << summary.stats.poll_calls
+              << " drain_calls=" << summary.stats.drain_calls
               << " range_stop=" << (summary.stats.range_stop ? 1 : 0) << '\n';
     return 0;
   } catch (const std::exception &e) {

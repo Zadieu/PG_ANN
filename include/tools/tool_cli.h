@@ -64,6 +64,14 @@ struct BenchSweepConfig {
   BenchToolConfig base_config;
   std::vector<uint32_t> beam_widths;
   std::vector<uint32_t> l_search_values;
+  std::vector<uint64_t> graph_cache_budget_bytes_values;
+  std::vector<GraphCacheBuildPolicy> graph_cache_policies;
+  std::vector<uint32_t> refine_k_values;
+  std::vector<float> refine_ratio_values;
+  std::vector<uint8_t> defer_exact_until_refinement_values;
+  std::vector<SearchConfig::SchedulerPolicy> scheduler_policies;
+  std::vector<uint32_t> scheduler_policy_limit_values;
+  std::vector<SearchConfig::DynamicBeamPolicy> dynamic_beam_policies;
   std::vector<ApproxDistanceKind> approx_kinds;
 };
 
@@ -81,6 +89,35 @@ struct BenchComparisonRow {
   int64_t delta_async_reads = 0;
   int64_t delta_pages_completed = 0;
   int64_t delta_resident_expansions = 0;
+  int64_t delta_bytes_read = 0;
+  int64_t delta_page_resident_hits = 0;
+  int64_t delta_graph_replicated_hits = 0;
+  int64_t delta_graph_cache_hits = 0;
+  int64_t delta_graph_cache_misses = 0;
+  int64_t delta_graph_cache_expansions = 0;
+  int64_t delta_graph_cache_avoided_reads = 0;
+  int64_t delta_graph_cache_resident_bytes = 0;
+  int64_t delta_graph_cache_entries = 0;
+  int64_t delta_graph_cache_build_page_reads = 0;
+  int64_t delta_exact_from_page = 0;
+  int64_t delta_exact_from_payload = 0;
+  int64_t delta_refinement_candidates = 0;
+  int64_t delta_refinement_reads = 0;
+  int64_t delta_approximate_candidates = 0;
+  int64_t delta_refinement_bound = 0;
+  int64_t delta_refinement_already_exact = 0;
+  int64_t delta_refinement_exactified = 0;
+  int64_t delta_deferred_exact_candidates = 0;
+  int64_t delta_read_hits_in_pool = 0;
+  int64_t delta_read_waste_out_of_pool = 0;
+  int64_t delta_max_inflight_reads = 0;
+  int64_t delta_max_beam_width = 0;
+  int64_t delta_beam_width_increases = 0;
+  int64_t delta_scheduler_pending_max = 0;
+  int64_t delta_scheduler_ready_unexpanded_max = 0;
+  int64_t delta_scheduler_limit_hits = 0;
+  int64_t delta_poll_calls = 0;
+  int64_t delta_drain_calls = 0;
   int64_t delta_approx_evals = 0;
   int64_t delta_exact_evals = 0;
   int64_t delta_n_ios = 0;
@@ -146,7 +183,13 @@ struct InspectToolSummary {
 
 std::vector<float> ParseFloatVector(const std::string &text);
 std::vector<uint32_t> ParseUint32List(const std::string &text);
+std::vector<uint64_t> ParseUint64List(const std::string &text);
+std::vector<float> ParseFloatList(const std::string &text);
+std::vector<uint8_t> ParseBoolList(const std::string &text);
 std::vector<ApproxDistanceKind> ParseApproxKindList(const std::string &text);
+std::vector<GraphCacheBuildPolicy> ParseGraphCachePolicyList(const std::string &text);
+std::vector<SearchConfig::SchedulerPolicy> ParseSchedulerPolicyList(const std::string &text);
+std::vector<SearchConfig::DynamicBeamPolicy> ParseDynamicBeamPolicyList(const std::string &text);
 std::vector<std::vector<float>> LoadQueryVectors(const std::string &path, QueryInputMode mode);
 std::vector<std::vector<uint32_t>> LoadGroundTruthIds(const std::string &path);
 std::vector<std::vector<uint32_t>> GenerateGroundTruthIds(const std::string &index_path,

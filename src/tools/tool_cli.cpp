@@ -73,6 +73,40 @@ std::string JoinUint32Values(const std::vector<uint32_t> &values) {
   return out.str();
 }
 
+std::string JoinUint64Values(const std::vector<uint64_t> &values) {
+  std::ostringstream out;
+  for (size_t i = 0; i < values.size(); ++i) {
+    if (i != 0) {
+      out << ',';
+    }
+    out << values[i];
+  }
+  return out.str();
+}
+
+std::string JoinFloatValues(const std::vector<float> &values) {
+  std::ostringstream out;
+  out << std::fixed << std::setprecision(6);
+  for (size_t i = 0; i < values.size(); ++i) {
+    if (i != 0) {
+      out << ',';
+    }
+    out << values[i];
+  }
+  return out.str();
+}
+
+std::string JoinBoolValues(const std::vector<uint8_t> &values) {
+  std::ostringstream out;
+  for (size_t i = 0; i < values.size(); ++i) {
+    if (i != 0) {
+      out << ',';
+    }
+    out << (values[i] != 0 ? 1 : 0);
+  }
+  return out.str();
+}
+
 std::string JoinApproxKinds(const std::vector<ApproxDistanceKind> &values) {
   std::ostringstream out;
   for (size_t i = 0; i < values.size(); ++i) {
@@ -146,6 +180,30 @@ std::vector<std::string> SplitTabSeparatedLine(const std::string &line) {
   return fields;
 }
 
+std::unordered_map<std::string, size_t> BuildHeaderIndex(const std::vector<std::string> &header_fields) {
+  std::unordered_map<std::string, size_t> columns;
+  columns.reserve(header_fields.size());
+  for (size_t i = 0; i < header_fields.size(); ++i) {
+    if (!columns.emplace(header_fields[i], i).second) {
+      throw std::runtime_error("bench summary header contains a duplicate column: " + header_fields[i]);
+    }
+  }
+  return columns;
+}
+
+const std::string &RequiredTsvField(const std::vector<std::string> &fields,
+                                    const std::unordered_map<std::string, size_t> &columns,
+                                    const char *name) {
+  const auto it = columns.find(name);
+  if (it == columns.end()) {
+    throw std::runtime_error("bench summary header is missing column: " + std::string(name));
+  }
+  if (it->second >= fields.size()) {
+    throw std::runtime_error("bench summary row is missing column: " + std::string(name));
+  }
+  return fields[it->second];
+}
+
 ApproxDistanceKind ParseApproxKind(const std::string &text) {
   if (text == "full") {
     return ApproxDistanceKind::kFullPrecision;
@@ -180,14 +238,156 @@ double ParseDoubleField(const std::string &name, const std::string &text) {
   }
 }
 
+uint64_t ParseOptionalUint64Column(const std::vector<std::string> &fields,
+                                   const std::unordered_map<std::string, size_t> &columns,
+                                   const char *name,
+                                   uint64_t default_value = 0) {
+  const auto it = columns.find(name);
+  if (it == columns.end() || it->second >= fields.size() || fields[it->second].empty()) {
+    return default_value;
+  }
+  return ParseUint64Field(name, fields[it->second]);
+}
+
+uint32_t ParseOptionalUint32Column(const std::vector<std::string> &fields,
+                                   const std::unordered_map<std::string, size_t> &columns,
+                                   const char *name,
+                                   uint32_t default_value = 0) {
+  const auto it = columns.find(name);
+  if (it == columns.end() || it->second >= fields.size() || fields[it->second].empty()) {
+    return default_value;
+  }
+  return ParseUint32Field(name, fields[it->second]);
+}
+
+double ParseOptionalDoubleColumn(const std::vector<std::string> &fields,
+                                 const std::unordered_map<std::string, size_t> &columns,
+                                 const char *name,
+                                 double default_value = 0.0) {
+  const auto it = columns.find(name);
+  if (it == columns.end() || it->second >= fields.size() || fields[it->second].empty()) {
+    return default_value;
+  }
+  return ParseDoubleField(name, fields[it->second]);
+}
+
 std::string SummaryRunKey(const BenchToolSummary &summary) {
   std::ostringstream out;
-  out << ApproxKindName(summary.approx_kind) << '|'
+  out << std::setprecision(9)
+      << ApproxKindName(summary.approx_kind) << '|'
       << summary.search_config.top_k << '|'
       << summary.search_config.beam_width << '|'
       << summary.search_config.l_search << '|'
+      << summary.search_config.graph_cache_budget_bytes << '|'
+      << GraphCacheBuildPolicyName(summary.search_config.graph_cache_policy) << '|'
+      << summary.search_config.refine_k << '|'
+      << summary.search_config.refine_ratio << '|'
+      << (summary.search_config.defer_exact_until_refinement ? 1 : 0) << '|'
+      << SchedulerPolicyName(summary.search_config.scheduler_policy) << '|'
+      << summary.search_config.scheduler_policy_limit << '|'
+      << DynamicBeamPolicyName(summary.search_config.dynamic_beam_policy) << '|'
       << summary.num_queries;
   return out.str();
+}
+
+std::string JoinGraphCachePolicies(const std::vector<GraphCacheBuildPolicy> &values) {
+  std::ostringstream out;
+  for (size_t i = 0; i < values.size(); ++i) {
+    if (i != 0) {
+      out << ',';
+    }
+    out << GraphCacheBuildPolicyName(values[i]);
+  }
+  return out.str();
+}
+
+std::string JoinSchedulerPolicies(const std::vector<SearchConfig::SchedulerPolicy> &values) {
+  std::ostringstream out;
+  for (size_t i = 0; i < values.size(); ++i) {
+    if (i != 0) {
+      out << ',';
+    }
+    out << SchedulerPolicyName(values[i]);
+  }
+  return out.str();
+}
+
+std::string JoinDynamicBeamPolicies(const std::vector<SearchConfig::DynamicBeamPolicy> &values) {
+  std::ostringstream out;
+  for (size_t i = 0; i < values.size(); ++i) {
+    if (i != 0) {
+      out << ',';
+    }
+    out << DynamicBeamPolicyName(values[i]);
+  }
+  return out.str();
+}
+
+void AccumulateSearchStats(SearchStats *total, const SearchStats &delta) {
+  if (total == nullptr) {
+    return;
+  }
+  total->async_reads += delta.async_reads;
+  total->pages_completed += delta.pages_completed;
+  total->resident_expansions += delta.resident_expansions;
+  total->bytes_read += delta.bytes_read;
+  total->page_resident_hits += delta.page_resident_hits;
+  total->graph_replicated_hits += delta.graph_replicated_hits;
+  total->graph_cache_hits += delta.graph_cache_hits;
+  total->graph_cache_misses += delta.graph_cache_misses;
+  total->graph_cache_expansions += delta.graph_cache_expansions;
+  total->graph_cache_avoided_reads += delta.graph_cache_avoided_reads;
+  total->graph_cache_resident_bytes = std::max(total->graph_cache_resident_bytes, delta.graph_cache_resident_bytes);
+  total->graph_cache_entries = std::max(total->graph_cache_entries, delta.graph_cache_entries);
+  total->graph_cache_build_page_reads =
+      std::max(total->graph_cache_build_page_reads, delta.graph_cache_build_page_reads);
+  total->exact_from_page += delta.exact_from_page;
+  total->exact_from_payload += delta.exact_from_payload;
+  total->refinement_candidates += delta.refinement_candidates;
+  total->refinement_reads += delta.refinement_reads;
+  total->approximate_candidates += delta.approximate_candidates;
+  total->refinement_bound += delta.refinement_bound;
+  total->refinement_already_exact += delta.refinement_already_exact;
+  total->refinement_exactified += delta.refinement_exactified;
+  total->deferred_exact_candidates += delta.deferred_exact_candidates;
+  total->read_hits_in_pool += delta.read_hits_in_pool;
+  total->read_waste_out_of_pool += delta.read_waste_out_of_pool;
+  total->max_inflight_reads = std::max(total->max_inflight_reads, delta.max_inflight_reads);
+  total->max_beam_width = std::max(total->max_beam_width, delta.max_beam_width);
+  total->beam_width_increases += delta.beam_width_increases;
+  total->scheduler_policy_limit = std::max(total->scheduler_policy_limit, delta.scheduler_policy_limit);
+  total->scheduler_pending_max = std::max(total->scheduler_pending_max, delta.scheduler_pending_max);
+  total->scheduler_ready_unexpanded_max =
+      std::max(total->scheduler_ready_unexpanded_max, delta.scheduler_ready_unexpanded_max);
+  total->scheduler_limit_hits += delta.scheduler_limit_hits;
+  total->poll_calls += delta.poll_calls;
+  total->drain_calls += delta.drain_calls;
+  total->exact_distance_evals += delta.exact_distance_evals;
+  total->approx_distance_evals += delta.approx_distance_evals;
+  total->n_ios += delta.n_ios;
+  total->n_cmps += delta.n_cmps;
+  total->n_hops += delta.n_hops;
+  total->cpu_us += delta.cpu_us;
+  total->io_us += delta.io_us;
+  total->cpu_us1 += delta.cpu_us1;
+  total->cpu_us2 += delta.cpu_us2;
+  total->io_us1 += delta.io_us1;
+  total->total_us += delta.total_us;
+  total->range_stop = total->range_stop || delta.range_stop;
+  for (size_t i = 0; i < 4; ++i) {
+    total->estimated_filter_reads[i] += delta.estimated_filter_reads[i];
+    total->estimated_filter_cmps[i] += delta.estimated_filter_cmps[i];
+    total->filter_reads[i] += delta.filter_reads[i];
+    total->filter_accessed_vectors[i] += delta.filter_accessed_vectors[i];
+    total->filter_false_positives[i] += delta.filter_false_positives[i];
+    total->filter_io_us[i] += delta.filter_io_us[i];
+    total->filter_cpu_us[i] += delta.filter_cpu_us[i];
+    total->filter_io_us1[i] += delta.filter_io_us1[i];
+  }
+}
+
+int64_t CounterDelta(uint64_t candidate, uint64_t baseline) {
+  return static_cast<int64_t>(candidate) - static_cast<int64_t>(baseline);
 }
 
 }  // namespace
@@ -225,6 +425,68 @@ std::vector<uint32_t> ParseUint32List(const std::string &text) {
   return values;
 }
 
+std::vector<uint64_t> ParseUint64List(const std::string &text) {
+  std::vector<uint64_t> values;
+  std::istringstream in(text);
+  std::string token;
+  while (std::getline(in, token, ',')) {
+    if (token.empty()) {
+      continue;
+    }
+    try {
+      values.push_back(static_cast<uint64_t>(std::stoull(token)));
+    } catch (const std::exception &) {
+      throw std::runtime_error("failed to parse uint64 list");
+    }
+  }
+  if (values.empty()) {
+    throw std::runtime_error("uint64 list must not be empty");
+  }
+  return values;
+}
+
+std::vector<float> ParseFloatList(const std::string &text) {
+  std::vector<float> values;
+  std::istringstream in(text);
+  std::string token;
+  while (std::getline(in, token, ',')) {
+    if (token.empty()) {
+      continue;
+    }
+    try {
+      values.push_back(std::stof(token));
+    } catch (const std::exception &) {
+      throw std::runtime_error("failed to parse float list");
+    }
+  }
+  if (values.empty()) {
+    throw std::runtime_error("float list must not be empty");
+  }
+  return values;
+}
+
+std::vector<uint8_t> ParseBoolList(const std::string &text) {
+  std::vector<uint8_t> values;
+  std::istringstream in(text);
+  std::string token;
+  while (std::getline(in, token, ',')) {
+    if (token.empty()) {
+      continue;
+    }
+    if (token == "1" || token == "true" || token == "yes") {
+      values.push_back(1);
+    } else if (token == "0" || token == "false" || token == "no") {
+      values.push_back(0);
+    } else {
+      throw std::runtime_error("failed to parse bool list");
+    }
+  }
+  if (values.empty()) {
+    throw std::runtime_error("bool list must not be empty");
+  }
+  return values;
+}
+
 std::vector<ApproxDistanceKind> ParseApproxKindList(const std::string &text) {
   std::vector<ApproxDistanceKind> values;
   std::istringstream in(text);
@@ -240,6 +502,54 @@ std::vector<ApproxDistanceKind> ParseApproxKindList(const std::string &text) {
   }
   if (values.empty()) {
     throw std::runtime_error("approx kind list must not be empty");
+  }
+  return values;
+}
+
+std::vector<GraphCacheBuildPolicy> ParseGraphCachePolicyList(const std::string &text) {
+  std::vector<GraphCacheBuildPolicy> values;
+  std::istringstream in(text);
+  std::string token;
+  while (std::getline(in, token, ',')) {
+    if (token.empty()) {
+      continue;
+    }
+    values.push_back(ParseGraphCacheBuildPolicy(token));
+  }
+  if (values.empty()) {
+    throw std::runtime_error("graph cache policy list must not be empty");
+  }
+  return values;
+}
+
+std::vector<SearchConfig::SchedulerPolicy> ParseSchedulerPolicyList(const std::string &text) {
+  std::vector<SearchConfig::SchedulerPolicy> values;
+  std::istringstream in(text);
+  std::string token;
+  while (std::getline(in, token, ',')) {
+    if (token.empty()) {
+      continue;
+    }
+    values.push_back(ParseSchedulerPolicy(token));
+  }
+  if (values.empty()) {
+    throw std::runtime_error("scheduler policy list must not be empty");
+  }
+  return values;
+}
+
+std::vector<SearchConfig::DynamicBeamPolicy> ParseDynamicBeamPolicyList(const std::string &text) {
+  std::vector<SearchConfig::DynamicBeamPolicy> values;
+  std::istringstream in(text);
+  std::string token;
+  while (std::getline(in, token, ',')) {
+    if (token.empty()) {
+      continue;
+    }
+    values.push_back(ParseDynamicBeamPolicy(token));
+  }
+  if (values.empty()) {
+    throw std::runtime_error("dynamic beam policy list must not be empty");
   }
   return values;
 }
@@ -416,16 +726,7 @@ BenchToolSummary RunBenchTool(const BenchToolConfig &config) {
       const uint32_t k = config.recall_at_k == 0 ? config.search_config.top_k : config.recall_at_k;
       recall_sum += ComputeRecallAtK(results, config.ground_truth_ids[query_id], k);
     }
-    summary.aggregate_stats.async_reads += stats.async_reads;
-    summary.aggregate_stats.pages_completed += stats.pages_completed;
-    summary.aggregate_stats.resident_expansions += stats.resident_expansions;
-    summary.aggregate_stats.exact_distance_evals += stats.exact_distance_evals;
-    summary.aggregate_stats.approx_distance_evals += stats.approx_distance_evals;
-    summary.aggregate_stats.n_ios += stats.n_ios;
-    summary.aggregate_stats.n_cmps += stats.n_cmps;
-    summary.aggregate_stats.n_hops += stats.n_hops;
-    summary.aggregate_stats.cpu_us += stats.cpu_us;
-    summary.aggregate_stats.io_us += stats.io_us;
+    AccumulateSearchStats(&summary.aggregate_stats, stats);
   }
   const auto end = std::chrono::steady_clock::now();
   summary.elapsed_ms =
@@ -448,6 +749,36 @@ BenchSweepSummary RunBenchSweep(const BenchSweepConfig &config) {
   const std::vector<uint32_t> l_search_values =
       config.l_search_values.empty() ? std::vector<uint32_t>{config.base_config.search_config.l_search}
                                      : config.l_search_values;
+  const std::vector<uint64_t> graph_cache_budget_bytes_values =
+      config.graph_cache_budget_bytes_values.empty()
+          ? std::vector<uint64_t>{config.base_config.search_config.graph_cache_budget_bytes}
+          : config.graph_cache_budget_bytes_values;
+  const std::vector<GraphCacheBuildPolicy> graph_cache_policies =
+      config.graph_cache_policies.empty()
+          ? std::vector<GraphCacheBuildPolicy>{config.base_config.search_config.graph_cache_policy}
+          : config.graph_cache_policies;
+  const std::vector<uint32_t> refine_k_values =
+      config.refine_k_values.empty() ? std::vector<uint32_t>{config.base_config.search_config.refine_k}
+                                     : config.refine_k_values;
+  const std::vector<float> refine_ratio_values =
+      config.refine_ratio_values.empty() ? std::vector<float>{config.base_config.search_config.refine_ratio}
+                                         : config.refine_ratio_values;
+  const std::vector<uint8_t> defer_exact_until_refinement_values =
+      config.defer_exact_until_refinement_values.empty()
+          ? std::vector<uint8_t>{static_cast<uint8_t>(config.base_config.search_config.defer_exact_until_refinement ? 1 : 0)}
+          : config.defer_exact_until_refinement_values;
+  const std::vector<SearchConfig::SchedulerPolicy> scheduler_policies =
+      config.scheduler_policies.empty()
+          ? std::vector<SearchConfig::SchedulerPolicy>{config.base_config.search_config.scheduler_policy}
+          : config.scheduler_policies;
+  const std::vector<uint32_t> scheduler_policy_limit_values =
+      config.scheduler_policy_limit_values.empty()
+          ? std::vector<uint32_t>{config.base_config.search_config.scheduler_policy_limit}
+          : config.scheduler_policy_limit_values;
+  const std::vector<SearchConfig::DynamicBeamPolicy> dynamic_beam_policies =
+      config.dynamic_beam_policies.empty()
+          ? std::vector<SearchConfig::DynamicBeamPolicy>{config.base_config.search_config.dynamic_beam_policy}
+          : config.dynamic_beam_policies;
   const std::vector<ApproxDistanceKind> approx_kinds =
       config.approx_kinds.empty() ? std::vector<ApproxDistanceKind>{config.base_config.approx_kind}
                                   : config.approx_kinds;
@@ -455,11 +786,35 @@ BenchSweepSummary RunBenchSweep(const BenchSweepConfig &config) {
   for (ApproxDistanceKind kind : approx_kinds) {
     for (uint32_t beam_width : beam_widths) {
       for (uint32_t l_search : l_search_values) {
-        BenchToolConfig run_config = config.base_config;
-        run_config.approx_kind = kind;
-        run_config.search_config.beam_width = beam_width;
-        run_config.search_config.l_search = l_search;
-        summary.runs.push_back(RunBenchTool(run_config));
+        for (uint64_t graph_cache_budget_bytes : graph_cache_budget_bytes_values) {
+          for (GraphCacheBuildPolicy graph_cache_policy : graph_cache_policies) {
+            for (uint32_t refine_k : refine_k_values) {
+              for (float refine_ratio : refine_ratio_values) {
+                for (uint8_t defer_exact : defer_exact_until_refinement_values) {
+                  for (SearchConfig::SchedulerPolicy scheduler_policy : scheduler_policies) {
+                    for (uint32_t scheduler_policy_limit : scheduler_policy_limit_values) {
+                      for (SearchConfig::DynamicBeamPolicy dynamic_beam_policy : dynamic_beam_policies) {
+                        BenchToolConfig run_config = config.base_config;
+                        run_config.approx_kind = kind;
+                        run_config.search_config.beam_width = beam_width;
+                        run_config.search_config.l_search = l_search;
+                        run_config.search_config.graph_cache_budget_bytes = graph_cache_budget_bytes;
+                        run_config.search_config.graph_cache_policy = graph_cache_policy;
+                        run_config.search_config.refine_k = refine_k;
+                        run_config.search_config.refine_ratio = refine_ratio;
+                        run_config.search_config.defer_exact_until_refinement = defer_exact != 0;
+                        run_config.search_config.scheduler_policy = scheduler_policy;
+                        run_config.search_config.scheduler_policy_limit = scheduler_policy_limit;
+                        run_config.search_config.dynamic_beam_policy = dynamic_beam_policy;
+                        summary.runs.push_back(RunBenchTool(run_config));
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -475,16 +830,34 @@ void ExportBenchSummariesTsv(const std::string &path, const std::vector<BenchToo
   if (!out) {
     throw std::runtime_error("failed to open bench export file");
   }
-  out << "approx_kind\tapprox_backend\ttop_k\tbeam_width\tl_search\tqueries\telapsed_ms\taverage_latency_ms\tqps"
+  out << "approx_kind\tapprox_backend\ttop_k\tbeam_width\tl_search\tgraph_cache_budget_bytes"
+         "\tgraph_cache_policy\trefine_k\trefine_ratio\tdefer_exact_until_refinement"
+         "\tscheduler_policy\tscheduler_policy_limit\tdynamic_beam_policy"
+         "\tqueries\telapsed_ms\taverage_latency_ms\tqps"
          "\tasync_reads\tpages_completed\tresident_expansions\tapprox_evals\texact_evals"
-         "\tn_ios\tn_cmps\tn_hops\tcpu_us\tio_us\trange_stop\taverage_recall"
+         "\tn_ios\tn_cmps\tn_hops\tcpu_us\tio_us\tbytes_read\tpage_resident_hits"
+         "\tgraph_replicated_hits\tgraph_cache_hits\tgraph_cache_misses\tgraph_cache_expansions"
+         "\tgraph_cache_avoided_reads\tgraph_cache_resident_bytes\tgraph_cache_entries"
+         "\tgraph_cache_build_page_reads\texact_from_page\texact_from_payload\trefinement_candidates"
+         "\trefinement_reads\tapproximate_candidates\trefinement_bound\trefinement_already_exact"
+         "\trefinement_exactified\tdeferred_exact_candidates\tread_hits_in_pool\tread_waste_out_of_pool\tmax_inflight_reads"
+         "\tmax_beam_width\tbeam_width_increases\tscheduler_policy_limit_observed\tscheduler_pending_max"
+         "\tscheduler_ready_unexpanded_max\tscheduler_limit_hits\tpoll_calls\tdrain_calls\trange_stop\taverage_recall"
          "\tfirst_query_result_ids\n";
   out << std::fixed << std::setprecision(6);
   for (const auto &summary : summaries) {
     out << ApproxKindName(summary.approx_kind) << '\t' << summary.approx_backend_name << '\t'
         << summary.search_config.top_k << '\t' << summary.search_config.beam_width << '\t'
-        << summary.search_config.l_search << '\t' << summary.num_queries << '\t' << summary.elapsed_ms << '\t'
-        << summary.average_latency_ms << '\t' << summary.qps << '\t'
+        << summary.search_config.l_search << '\t' << summary.search_config.graph_cache_budget_bytes << '\t'
+        << GraphCacheBuildPolicyName(summary.search_config.graph_cache_policy) << '\t'
+        << summary.search_config.refine_k << '\t'
+        << summary.search_config.refine_ratio << '\t'
+        << (summary.search_config.defer_exact_until_refinement ? 1 : 0) << '\t'
+        << SchedulerPolicyName(summary.search_config.scheduler_policy) << '\t'
+        << summary.search_config.scheduler_policy_limit << '\t'
+        << DynamicBeamPolicyName(summary.search_config.dynamic_beam_policy) << '\t'
+        << summary.num_queries << '\t' << summary.elapsed_ms << '\t' << summary.average_latency_ms << '\t'
+        << summary.qps << '\t'
         << summary.aggregate_stats.async_reads << '\t' << summary.aggregate_stats.pages_completed << '\t'
         << summary.aggregate_stats.resident_expansions << '\t'
         << summary.aggregate_stats.approx_distance_evals << '\t'
@@ -494,6 +867,36 @@ void ExportBenchSummariesTsv(const std::string &path, const std::vector<BenchToo
         << summary.aggregate_stats.n_hops << '\t'
         << summary.aggregate_stats.cpu_us << '\t'
         << summary.aggregate_stats.io_us << '\t'
+        << summary.aggregate_stats.bytes_read << '\t'
+        << summary.aggregate_stats.page_resident_hits << '\t'
+        << summary.aggregate_stats.graph_replicated_hits << '\t'
+        << summary.aggregate_stats.graph_cache_hits << '\t'
+        << summary.aggregate_stats.graph_cache_misses << '\t'
+        << summary.aggregate_stats.graph_cache_expansions << '\t'
+        << summary.aggregate_stats.graph_cache_avoided_reads << '\t'
+        << summary.aggregate_stats.graph_cache_resident_bytes << '\t'
+        << summary.aggregate_stats.graph_cache_entries << '\t'
+        << summary.aggregate_stats.graph_cache_build_page_reads << '\t'
+        << summary.aggregate_stats.exact_from_page << '\t'
+        << summary.aggregate_stats.exact_from_payload << '\t'
+        << summary.aggregate_stats.refinement_candidates << '\t'
+        << summary.aggregate_stats.refinement_reads << '\t'
+        << summary.aggregate_stats.approximate_candidates << '\t'
+        << summary.aggregate_stats.refinement_bound << '\t'
+        << summary.aggregate_stats.refinement_already_exact << '\t'
+        << summary.aggregate_stats.refinement_exactified << '\t'
+        << summary.aggregate_stats.deferred_exact_candidates << '\t'
+        << summary.aggregate_stats.read_hits_in_pool << '\t'
+        << summary.aggregate_stats.read_waste_out_of_pool << '\t'
+        << summary.aggregate_stats.max_inflight_reads << '\t'
+        << summary.aggregate_stats.max_beam_width << '\t'
+        << summary.aggregate_stats.beam_width_increases << '\t'
+        << summary.aggregate_stats.scheduler_policy_limit << '\t'
+        << summary.aggregate_stats.scheduler_pending_max << '\t'
+        << summary.aggregate_stats.scheduler_ready_unexpanded_max << '\t'
+        << summary.aggregate_stats.scheduler_limit_hits << '\t'
+        << summary.aggregate_stats.poll_calls << '\t'
+        << summary.aggregate_stats.drain_calls << '\t'
         << (summary.aggregate_stats.range_stop ? 1 : 0) << '\t'
         << (summary.has_recall ? summary.average_recall : -1.0) << '\t'
         << JoinResultIds(summary.first_query_results) << '\n';
@@ -521,6 +924,36 @@ void ExportBenchExperiment(const std::string &directory,
   const std::vector<uint32_t> l_search_values =
       config.l_search_values.empty() ? std::vector<uint32_t>{config.base_config.search_config.l_search}
                                      : config.l_search_values;
+  const std::vector<uint64_t> graph_cache_budget_bytes_values =
+      config.graph_cache_budget_bytes_values.empty()
+          ? std::vector<uint64_t>{config.base_config.search_config.graph_cache_budget_bytes}
+          : config.graph_cache_budget_bytes_values;
+  const std::vector<GraphCacheBuildPolicy> graph_cache_policies =
+      config.graph_cache_policies.empty()
+          ? std::vector<GraphCacheBuildPolicy>{config.base_config.search_config.graph_cache_policy}
+          : config.graph_cache_policies;
+  const std::vector<uint32_t> refine_k_values =
+      config.refine_k_values.empty() ? std::vector<uint32_t>{config.base_config.search_config.refine_k}
+                                     : config.refine_k_values;
+  const std::vector<float> refine_ratio_values =
+      config.refine_ratio_values.empty() ? std::vector<float>{config.base_config.search_config.refine_ratio}
+                                         : config.refine_ratio_values;
+  const std::vector<uint8_t> defer_exact_until_refinement_values =
+      config.defer_exact_until_refinement_values.empty()
+          ? std::vector<uint8_t>{static_cast<uint8_t>(config.base_config.search_config.defer_exact_until_refinement ? 1 : 0)}
+          : config.defer_exact_until_refinement_values;
+  const std::vector<SearchConfig::SchedulerPolicy> scheduler_policies =
+      config.scheduler_policies.empty()
+          ? std::vector<SearchConfig::SchedulerPolicy>{config.base_config.search_config.scheduler_policy}
+          : config.scheduler_policies;
+  const std::vector<uint32_t> scheduler_policy_limit_values =
+      config.scheduler_policy_limit_values.empty()
+          ? std::vector<uint32_t>{config.base_config.search_config.scheduler_policy_limit}
+          : config.scheduler_policy_limit_values;
+  const std::vector<SearchConfig::DynamicBeamPolicy> dynamic_beam_policies =
+      config.dynamic_beam_policies.empty()
+          ? std::vector<SearchConfig::DynamicBeamPolicy>{config.base_config.search_config.dynamic_beam_policy}
+          : config.dynamic_beam_policies;
   const std::vector<ApproxDistanceKind> approx_kinds =
       config.approx_kinds.empty() ? std::vector<ApproxDistanceKind>{config.base_config.approx_kind}
                                   : config.approx_kinds;
@@ -544,6 +977,14 @@ void ExportBenchExperiment(const std::string &directory,
   manifest << "recall_at_k=" << config.base_config.recall_at_k << '\n';
   manifest << "beam_widths=" << JoinUint32Values(beam_widths) << '\n';
   manifest << "l_search_values=" << JoinUint32Values(l_search_values) << '\n';
+  manifest << "graph_cache_budget_bytes_values=" << JoinUint64Values(graph_cache_budget_bytes_values) << '\n';
+  manifest << "graph_cache_policies=" << JoinGraphCachePolicies(graph_cache_policies) << '\n';
+  manifest << "refine_k_values=" << JoinUint32Values(refine_k_values) << '\n';
+  manifest << "refine_ratio_values=" << JoinFloatValues(refine_ratio_values) << '\n';
+  manifest << "defer_exact_until_refinement_values=" << JoinBoolValues(defer_exact_until_refinement_values) << '\n';
+  manifest << "scheduler_policies=" << JoinSchedulerPolicies(scheduler_policies) << '\n';
+  manifest << "scheduler_policy_limit_values=" << JoinUint32Values(scheduler_policy_limit_values) << '\n';
+  manifest << "dynamic_beam_policies=" << JoinDynamicBeamPolicies(dynamic_beam_policies) << '\n';
   manifest << "approx_kinds=" << JoinApproxKinds(approx_kinds) << '\n';
   manifest << "summary_tsv=" << summary_path.string() << '\n';
 
@@ -571,6 +1012,14 @@ void ExportBenchExperiment(const std::string &directory,
     run_out << "top_k=" << run.search_config.top_k << '\n';
     run_out << "beam_width=" << run.search_config.beam_width << '\n';
     run_out << "l_search=" << run.search_config.l_search << '\n';
+    run_out << "graph_cache_budget_bytes=" << run.search_config.graph_cache_budget_bytes << '\n';
+    run_out << "graph_cache_policy=" << GraphCacheBuildPolicyName(run.search_config.graph_cache_policy) << '\n';
+    run_out << "refine_k=" << run.search_config.refine_k << '\n';
+    run_out << "refine_ratio=" << run.search_config.refine_ratio << '\n';
+    run_out << "defer_exact_until_refinement=" << (run.search_config.defer_exact_until_refinement ? 1 : 0) << '\n';
+    run_out << "scheduler_policy=" << SchedulerPolicyName(run.search_config.scheduler_policy) << '\n';
+    run_out << "scheduler_policy_limit=" << run.search_config.scheduler_policy_limit << '\n';
+    run_out << "dynamic_beam_policy=" << DynamicBeamPolicyName(run.search_config.dynamic_beam_policy) << '\n';
     run_out << std::fixed << std::setprecision(6);
     run_out << "elapsed_ms=" << run.elapsed_ms << '\n';
     run_out << "average_latency_ms=" << run.average_latency_ms << '\n';
@@ -586,6 +1035,36 @@ void ExportBenchExperiment(const std::string &directory,
     run_out << "n_hops=" << run.aggregate_stats.n_hops << '\n';
     run_out << "cpu_us=" << run.aggregate_stats.cpu_us << '\n';
     run_out << "io_us=" << run.aggregate_stats.io_us << '\n';
+    run_out << "bytes_read=" << run.aggregate_stats.bytes_read << '\n';
+    run_out << "page_resident_hits=" << run.aggregate_stats.page_resident_hits << '\n';
+    run_out << "graph_replicated_hits=" << run.aggregate_stats.graph_replicated_hits << '\n';
+    run_out << "graph_cache_hits=" << run.aggregate_stats.graph_cache_hits << '\n';
+    run_out << "graph_cache_misses=" << run.aggregate_stats.graph_cache_misses << '\n';
+    run_out << "graph_cache_expansions=" << run.aggregate_stats.graph_cache_expansions << '\n';
+    run_out << "graph_cache_avoided_reads=" << run.aggregate_stats.graph_cache_avoided_reads << '\n';
+    run_out << "graph_cache_resident_bytes=" << run.aggregate_stats.graph_cache_resident_bytes << '\n';
+    run_out << "graph_cache_entries=" << run.aggregate_stats.graph_cache_entries << '\n';
+    run_out << "graph_cache_build_page_reads=" << run.aggregate_stats.graph_cache_build_page_reads << '\n';
+    run_out << "exact_from_page=" << run.aggregate_stats.exact_from_page << '\n';
+    run_out << "exact_from_payload=" << run.aggregate_stats.exact_from_payload << '\n';
+    run_out << "refinement_candidates=" << run.aggregate_stats.refinement_candidates << '\n';
+    run_out << "refinement_reads=" << run.aggregate_stats.refinement_reads << '\n';
+    run_out << "approximate_candidates=" << run.aggregate_stats.approximate_candidates << '\n';
+    run_out << "refinement_bound=" << run.aggregate_stats.refinement_bound << '\n';
+    run_out << "refinement_already_exact=" << run.aggregate_stats.refinement_already_exact << '\n';
+    run_out << "refinement_exactified=" << run.aggregate_stats.refinement_exactified << '\n';
+    run_out << "deferred_exact_candidates=" << run.aggregate_stats.deferred_exact_candidates << '\n';
+    run_out << "read_hits_in_pool=" << run.aggregate_stats.read_hits_in_pool << '\n';
+    run_out << "read_waste_out_of_pool=" << run.aggregate_stats.read_waste_out_of_pool << '\n';
+    run_out << "max_inflight_reads=" << run.aggregate_stats.max_inflight_reads << '\n';
+    run_out << "max_beam_width=" << run.aggregate_stats.max_beam_width << '\n';
+    run_out << "beam_width_increases=" << run.aggregate_stats.beam_width_increases << '\n';
+    run_out << "scheduler_policy_limit_observed=" << run.aggregate_stats.scheduler_policy_limit << '\n';
+    run_out << "scheduler_pending_max=" << run.aggregate_stats.scheduler_pending_max << '\n';
+    run_out << "scheduler_ready_unexpanded_max=" << run.aggregate_stats.scheduler_ready_unexpanded_max << '\n';
+    run_out << "scheduler_limit_hits=" << run.aggregate_stats.scheduler_limit_hits << '\n';
+    run_out << "poll_calls=" << run.aggregate_stats.poll_calls << '\n';
+    run_out << "drain_calls=" << run.aggregate_stats.drain_calls << '\n';
     run_out << "range_stop=" << (run.aggregate_stats.range_stop ? 1 : 0) << '\n';
     run_out << "first_query_result_ids=" << JoinResultIds(run.first_query_results) << '\n';
   }
@@ -649,9 +1128,7 @@ std::vector<BenchToolSummary> LoadBenchSummariesTsv(const std::string &path) {
   }
 
   const std::vector<std::string> header_fields = SplitTabSeparatedLine(header);
-  if (header_fields.size() < 22) {
-    throw std::runtime_error("bench summary header is incomplete");
-  }
+  const std::unordered_map<std::string, size_t> columns = BuildHeaderIndex(header_fields);
 
   std::vector<BenchToolSummary> summaries;
   std::string line;
@@ -660,32 +1137,113 @@ std::vector<BenchToolSummary> LoadBenchSummariesTsv(const std::string &path) {
       continue;
     }
     const std::vector<std::string> fields = SplitTabSeparatedLine(line);
-    if (fields.size() != 22) {
+    if (fields.size() > header_fields.size()) {
       throw std::runtime_error("bench summary row has unexpected column count");
     }
 
     BenchToolSummary summary;
-    summary.approx_kind = ParseApproxKind(fields[0]);
-    summary.approx_backend_name = fields[1];
-    summary.search_config.top_k = ParseUint32Field("top_k", fields[2]);
-    summary.search_config.beam_width = ParseUint32Field("beam_width", fields[3]);
-    summary.search_config.l_search = ParseUint32Field("l_search", fields[4]);
-    summary.num_queries = ParseUint32Field("queries", fields[5]);
-    summary.elapsed_ms = ParseDoubleField("elapsed_ms", fields[6]);
-    summary.average_latency_ms = ParseDoubleField("average_latency_ms", fields[7]);
-    summary.qps = ParseDoubleField("qps", fields[8]);
-    summary.aggregate_stats.async_reads = ParseUint64Field("async_reads", fields[9]);
-    summary.aggregate_stats.pages_completed = ParseUint64Field("pages_completed", fields[10]);
-    summary.aggregate_stats.resident_expansions = ParseUint64Field("resident_expansions", fields[11]);
-    summary.aggregate_stats.approx_distance_evals = ParseUint64Field("approx_evals", fields[12]);
-    summary.aggregate_stats.exact_distance_evals = ParseUint64Field("exact_evals", fields[13]);
-    summary.aggregate_stats.n_ios = ParseUint64Field("n_ios", fields[14]);
-    summary.aggregate_stats.n_cmps = ParseUint64Field("n_cmps", fields[15]);
-    summary.aggregate_stats.n_hops = ParseUint64Field("n_hops", fields[16]);
-    summary.aggregate_stats.cpu_us = ParseUint64Field("cpu_us", fields[17]);
-    summary.aggregate_stats.io_us = ParseUint64Field("io_us", fields[18]);
-    summary.aggregate_stats.range_stop = ParseUint64Field("range_stop", fields[19]) != 0;
-    summary.average_recall = ParseDoubleField("average_recall", fields[20]);
+    summary.approx_kind = ParseApproxKind(RequiredTsvField(fields, columns, "approx_kind"));
+    summary.approx_backend_name = RequiredTsvField(fields, columns, "approx_backend");
+    summary.search_config.top_k = ParseUint32Field("top_k", RequiredTsvField(fields, columns, "top_k"));
+    summary.search_config.beam_width =
+        ParseUint32Field("beam_width", RequiredTsvField(fields, columns, "beam_width"));
+    summary.search_config.l_search = ParseUint32Field("l_search", RequiredTsvField(fields, columns, "l_search"));
+    summary.search_config.graph_cache_budget_bytes =
+        ParseOptionalUint64Column(fields, columns, "graph_cache_budget_bytes");
+    const auto graph_cache_policy_column = columns.find("graph_cache_policy");
+    if (graph_cache_policy_column != columns.end() && graph_cache_policy_column->second < fields.size() &&
+        !fields[graph_cache_policy_column->second].empty()) {
+      summary.search_config.graph_cache_policy =
+          ParseGraphCacheBuildPolicy(fields[graph_cache_policy_column->second]);
+    }
+    summary.search_config.refine_k = ParseOptionalUint32Column(fields, columns, "refine_k");
+    summary.search_config.refine_ratio =
+        static_cast<float>(ParseOptionalDoubleColumn(fields, columns, "refine_ratio"));
+    summary.search_config.defer_exact_until_refinement =
+        ParseOptionalUint64Column(fields, columns, "defer_exact_until_refinement") != 0;
+    const auto scheduler_policy_column = columns.find("scheduler_policy");
+    if (scheduler_policy_column != columns.end() && scheduler_policy_column->second < fields.size() &&
+        !fields[scheduler_policy_column->second].empty()) {
+      summary.search_config.scheduler_policy = ParseSchedulerPolicy(fields[scheduler_policy_column->second]);
+    }
+    summary.search_config.scheduler_policy_limit =
+        ParseOptionalUint32Column(fields, columns, "scheduler_policy_limit");
+    const auto dynamic_beam_policy_column = columns.find("dynamic_beam_policy");
+    if (dynamic_beam_policy_column != columns.end() && dynamic_beam_policy_column->second < fields.size() &&
+        !fields[dynamic_beam_policy_column->second].empty()) {
+      summary.search_config.dynamic_beam_policy =
+          ParseDynamicBeamPolicy(fields[dynamic_beam_policy_column->second]);
+    }
+    summary.num_queries = ParseUint32Field("queries", RequiredTsvField(fields, columns, "queries"));
+    summary.elapsed_ms = ParseDoubleField("elapsed_ms", RequiredTsvField(fields, columns, "elapsed_ms"));
+    summary.average_latency_ms =
+        ParseDoubleField("average_latency_ms", RequiredTsvField(fields, columns, "average_latency_ms"));
+    summary.qps = ParseDoubleField("qps", RequiredTsvField(fields, columns, "qps"));
+    summary.aggregate_stats.async_reads =
+        ParseUint64Field("async_reads", RequiredTsvField(fields, columns, "async_reads"));
+    summary.aggregate_stats.pages_completed =
+        ParseUint64Field("pages_completed", RequiredTsvField(fields, columns, "pages_completed"));
+    summary.aggregate_stats.resident_expansions =
+        ParseUint64Field("resident_expansions", RequiredTsvField(fields, columns, "resident_expansions"));
+    summary.aggregate_stats.approx_distance_evals =
+        ParseUint64Field("approx_evals", RequiredTsvField(fields, columns, "approx_evals"));
+    summary.aggregate_stats.exact_distance_evals =
+        ParseUint64Field("exact_evals", RequiredTsvField(fields, columns, "exact_evals"));
+    summary.aggregate_stats.n_ios = ParseUint64Field("n_ios", RequiredTsvField(fields, columns, "n_ios"));
+    summary.aggregate_stats.n_cmps = ParseUint64Field("n_cmps", RequiredTsvField(fields, columns, "n_cmps"));
+    summary.aggregate_stats.n_hops = ParseUint64Field("n_hops", RequiredTsvField(fields, columns, "n_hops"));
+    summary.aggregate_stats.cpu_us = ParseUint64Field("cpu_us", RequiredTsvField(fields, columns, "cpu_us"));
+    summary.aggregate_stats.io_us = ParseUint64Field("io_us", RequiredTsvField(fields, columns, "io_us"));
+    summary.aggregate_stats.bytes_read = ParseOptionalUint64Column(fields, columns, "bytes_read");
+    summary.aggregate_stats.page_resident_hits = ParseOptionalUint64Column(fields, columns, "page_resident_hits");
+    summary.aggregate_stats.graph_replicated_hits =
+        ParseOptionalUint64Column(fields, columns, "graph_replicated_hits");
+    summary.aggregate_stats.graph_cache_hits = ParseOptionalUint64Column(fields, columns, "graph_cache_hits");
+    summary.aggregate_stats.graph_cache_misses = ParseOptionalUint64Column(fields, columns, "graph_cache_misses");
+    summary.aggregate_stats.graph_cache_expansions =
+        ParseOptionalUint64Column(fields, columns, "graph_cache_expansions");
+    summary.aggregate_stats.graph_cache_avoided_reads =
+        ParseOptionalUint64Column(fields, columns, "graph_cache_avoided_reads");
+    summary.aggregate_stats.graph_cache_resident_bytes =
+        ParseOptionalUint64Column(fields, columns, "graph_cache_resident_bytes");
+    summary.aggregate_stats.graph_cache_entries = ParseOptionalUint64Column(fields, columns, "graph_cache_entries");
+    summary.aggregate_stats.graph_cache_build_page_reads =
+        ParseOptionalUint64Column(fields, columns, "graph_cache_build_page_reads");
+    summary.aggregate_stats.exact_from_page = ParseOptionalUint64Column(fields, columns, "exact_from_page");
+    summary.aggregate_stats.exact_from_payload = ParseOptionalUint64Column(fields, columns, "exact_from_payload");
+    summary.aggregate_stats.refinement_candidates =
+        ParseOptionalUint64Column(fields, columns, "refinement_candidates");
+    summary.aggregate_stats.refinement_reads = ParseOptionalUint64Column(fields, columns, "refinement_reads");
+    summary.aggregate_stats.approximate_candidates =
+        ParseOptionalUint64Column(fields, columns, "approximate_candidates");
+    summary.aggregate_stats.refinement_bound = ParseOptionalUint64Column(fields, columns, "refinement_bound");
+    summary.aggregate_stats.refinement_already_exact =
+        ParseOptionalUint64Column(fields, columns, "refinement_already_exact");
+    summary.aggregate_stats.refinement_exactified =
+        ParseOptionalUint64Column(fields, columns, "refinement_exactified");
+    summary.aggregate_stats.deferred_exact_candidates =
+        ParseOptionalUint64Column(fields, columns, "deferred_exact_candidates");
+    summary.aggregate_stats.read_hits_in_pool = ParseOptionalUint64Column(fields, columns, "read_hits_in_pool");
+    summary.aggregate_stats.read_waste_out_of_pool =
+        ParseOptionalUint64Column(fields, columns, "read_waste_out_of_pool");
+    summary.aggregate_stats.max_inflight_reads = ParseOptionalUint64Column(fields, columns, "max_inflight_reads");
+    summary.aggregate_stats.max_beam_width = ParseOptionalUint64Column(fields, columns, "max_beam_width");
+    summary.aggregate_stats.beam_width_increases =
+        ParseOptionalUint64Column(fields, columns, "beam_width_increases");
+    summary.aggregate_stats.scheduler_policy_limit =
+        ParseOptionalUint64Column(fields, columns, "scheduler_policy_limit_observed");
+    summary.aggregate_stats.scheduler_pending_max =
+        ParseOptionalUint64Column(fields, columns, "scheduler_pending_max");
+    summary.aggregate_stats.scheduler_ready_unexpanded_max =
+        ParseOptionalUint64Column(fields, columns, "scheduler_ready_unexpanded_max");
+    summary.aggregate_stats.scheduler_limit_hits =
+        ParseOptionalUint64Column(fields, columns, "scheduler_limit_hits");
+    summary.aggregate_stats.poll_calls = ParseOptionalUint64Column(fields, columns, "poll_calls");
+    summary.aggregate_stats.drain_calls = ParseOptionalUint64Column(fields, columns, "drain_calls");
+    summary.aggregate_stats.range_stop =
+        ParseUint64Field("range_stop", RequiredTsvField(fields, columns, "range_stop")) != 0;
+    summary.average_recall =
+        ParseDoubleField("average_recall", RequiredTsvField(fields, columns, "average_recall"));
     summary.has_recall = summary.average_recall >= 0.0;
     summaries.push_back(std::move(summary));
   }
@@ -729,26 +1287,81 @@ BenchComparisonSummary CompareBenchSummaries(const std::string &baseline_label,
     const double baseline_recall = row.baseline.has_recall ? row.baseline.average_recall : 0.0;
     const double candidate_recall = candidate_summary.has_recall ? candidate_summary.average_recall : 0.0;
     row.delta_average_recall = candidate_recall - baseline_recall;
-    row.delta_async_reads = static_cast<int64_t>(candidate_summary.aggregate_stats.async_reads) -
-                            static_cast<int64_t>(row.baseline.aggregate_stats.async_reads);
-    row.delta_pages_completed = static_cast<int64_t>(candidate_summary.aggregate_stats.pages_completed) -
-                                static_cast<int64_t>(row.baseline.aggregate_stats.pages_completed);
-    row.delta_resident_expansions = static_cast<int64_t>(candidate_summary.aggregate_stats.resident_expansions) -
-                                    static_cast<int64_t>(row.baseline.aggregate_stats.resident_expansions);
-    row.delta_approx_evals = static_cast<int64_t>(candidate_summary.aggregate_stats.approx_distance_evals) -
-                             static_cast<int64_t>(row.baseline.aggregate_stats.approx_distance_evals);
-    row.delta_exact_evals = static_cast<int64_t>(candidate_summary.aggregate_stats.exact_distance_evals) -
-                            static_cast<int64_t>(row.baseline.aggregate_stats.exact_distance_evals);
-    row.delta_n_ios = static_cast<int64_t>(candidate_summary.aggregate_stats.n_ios) -
-                      static_cast<int64_t>(row.baseline.aggregate_stats.n_ios);
-    row.delta_n_cmps = static_cast<int64_t>(candidate_summary.aggregate_stats.n_cmps) -
-                       static_cast<int64_t>(row.baseline.aggregate_stats.n_cmps);
-    row.delta_n_hops = static_cast<int64_t>(candidate_summary.aggregate_stats.n_hops) -
-                       static_cast<int64_t>(row.baseline.aggregate_stats.n_hops);
-    row.delta_cpu_us = static_cast<int64_t>(candidate_summary.aggregate_stats.cpu_us) -
-                       static_cast<int64_t>(row.baseline.aggregate_stats.cpu_us);
-    row.delta_io_us = static_cast<int64_t>(candidate_summary.aggregate_stats.io_us) -
-                      static_cast<int64_t>(row.baseline.aggregate_stats.io_us);
+    row.delta_async_reads =
+        CounterDelta(candidate_summary.aggregate_stats.async_reads, row.baseline.aggregate_stats.async_reads);
+    row.delta_pages_completed =
+        CounterDelta(candidate_summary.aggregate_stats.pages_completed, row.baseline.aggregate_stats.pages_completed);
+    row.delta_resident_expansions = CounterDelta(candidate_summary.aggregate_stats.resident_expansions,
+                                                row.baseline.aggregate_stats.resident_expansions);
+    row.delta_bytes_read =
+        CounterDelta(candidate_summary.aggregate_stats.bytes_read, row.baseline.aggregate_stats.bytes_read);
+    row.delta_page_resident_hits = CounterDelta(candidate_summary.aggregate_stats.page_resident_hits,
+                                               row.baseline.aggregate_stats.page_resident_hits);
+    row.delta_graph_replicated_hits = CounterDelta(candidate_summary.aggregate_stats.graph_replicated_hits,
+                                                  row.baseline.aggregate_stats.graph_replicated_hits);
+    row.delta_graph_cache_hits = CounterDelta(candidate_summary.aggregate_stats.graph_cache_hits,
+                                             row.baseline.aggregate_stats.graph_cache_hits);
+    row.delta_graph_cache_misses = CounterDelta(candidate_summary.aggregate_stats.graph_cache_misses,
+                                               row.baseline.aggregate_stats.graph_cache_misses);
+    row.delta_graph_cache_expansions = CounterDelta(candidate_summary.aggregate_stats.graph_cache_expansions,
+                                                   row.baseline.aggregate_stats.graph_cache_expansions);
+    row.delta_graph_cache_avoided_reads = CounterDelta(candidate_summary.aggregate_stats.graph_cache_avoided_reads,
+                                                      row.baseline.aggregate_stats.graph_cache_avoided_reads);
+    row.delta_graph_cache_resident_bytes = CounterDelta(candidate_summary.aggregate_stats.graph_cache_resident_bytes,
+                                                       row.baseline.aggregate_stats.graph_cache_resident_bytes);
+    row.delta_graph_cache_entries = CounterDelta(candidate_summary.aggregate_stats.graph_cache_entries,
+                                                row.baseline.aggregate_stats.graph_cache_entries);
+    row.delta_graph_cache_build_page_reads =
+        CounterDelta(candidate_summary.aggregate_stats.graph_cache_build_page_reads,
+                     row.baseline.aggregate_stats.graph_cache_build_page_reads);
+    row.delta_exact_from_page =
+        CounterDelta(candidate_summary.aggregate_stats.exact_from_page, row.baseline.aggregate_stats.exact_from_page);
+    row.delta_exact_from_payload = CounterDelta(candidate_summary.aggregate_stats.exact_from_payload,
+                                               row.baseline.aggregate_stats.exact_from_payload);
+    row.delta_refinement_candidates = CounterDelta(candidate_summary.aggregate_stats.refinement_candidates,
+                                                  row.baseline.aggregate_stats.refinement_candidates);
+    row.delta_refinement_reads =
+        CounterDelta(candidate_summary.aggregate_stats.refinement_reads, row.baseline.aggregate_stats.refinement_reads);
+    row.delta_approximate_candidates = CounterDelta(candidate_summary.aggregate_stats.approximate_candidates,
+                                                    row.baseline.aggregate_stats.approximate_candidates);
+    row.delta_refinement_bound =
+        CounterDelta(candidate_summary.aggregate_stats.refinement_bound, row.baseline.aggregate_stats.refinement_bound);
+    row.delta_refinement_already_exact = CounterDelta(candidate_summary.aggregate_stats.refinement_already_exact,
+                                                     row.baseline.aggregate_stats.refinement_already_exact);
+    row.delta_refinement_exactified = CounterDelta(candidate_summary.aggregate_stats.refinement_exactified,
+                                                  row.baseline.aggregate_stats.refinement_exactified);
+    row.delta_deferred_exact_candidates = CounterDelta(candidate_summary.aggregate_stats.deferred_exact_candidates,
+                                                      row.baseline.aggregate_stats.deferred_exact_candidates);
+    row.delta_read_hits_in_pool = CounterDelta(candidate_summary.aggregate_stats.read_hits_in_pool,
+                                              row.baseline.aggregate_stats.read_hits_in_pool);
+    row.delta_read_waste_out_of_pool = CounterDelta(candidate_summary.aggregate_stats.read_waste_out_of_pool,
+                                                   row.baseline.aggregate_stats.read_waste_out_of_pool);
+    row.delta_max_inflight_reads = CounterDelta(candidate_summary.aggregate_stats.max_inflight_reads,
+                                               row.baseline.aggregate_stats.max_inflight_reads);
+    row.delta_max_beam_width =
+        CounterDelta(candidate_summary.aggregate_stats.max_beam_width, row.baseline.aggregate_stats.max_beam_width);
+    row.delta_beam_width_increases = CounterDelta(candidate_summary.aggregate_stats.beam_width_increases,
+                                                 row.baseline.aggregate_stats.beam_width_increases);
+    row.delta_scheduler_pending_max = CounterDelta(candidate_summary.aggregate_stats.scheduler_pending_max,
+                                                  row.baseline.aggregate_stats.scheduler_pending_max);
+    row.delta_scheduler_ready_unexpanded_max =
+        CounterDelta(candidate_summary.aggregate_stats.scheduler_ready_unexpanded_max,
+                     row.baseline.aggregate_stats.scheduler_ready_unexpanded_max);
+    row.delta_scheduler_limit_hits = CounterDelta(candidate_summary.aggregate_stats.scheduler_limit_hits,
+                                                 row.baseline.aggregate_stats.scheduler_limit_hits);
+    row.delta_poll_calls =
+        CounterDelta(candidate_summary.aggregate_stats.poll_calls, row.baseline.aggregate_stats.poll_calls);
+    row.delta_drain_calls =
+        CounterDelta(candidate_summary.aggregate_stats.drain_calls, row.baseline.aggregate_stats.drain_calls);
+    row.delta_approx_evals = CounterDelta(candidate_summary.aggregate_stats.approx_distance_evals,
+                                         row.baseline.aggregate_stats.approx_distance_evals);
+    row.delta_exact_evals = CounterDelta(candidate_summary.aggregate_stats.exact_distance_evals,
+                                        row.baseline.aggregate_stats.exact_distance_evals);
+    row.delta_n_ios = CounterDelta(candidate_summary.aggregate_stats.n_ios, row.baseline.aggregate_stats.n_ios);
+    row.delta_n_cmps = CounterDelta(candidate_summary.aggregate_stats.n_cmps, row.baseline.aggregate_stats.n_cmps);
+    row.delta_n_hops = CounterDelta(candidate_summary.aggregate_stats.n_hops, row.baseline.aggregate_stats.n_hops);
+    row.delta_cpu_us = CounterDelta(candidate_summary.aggregate_stats.cpu_us, row.baseline.aggregate_stats.cpu_us);
+    row.delta_io_us = CounterDelta(candidate_summary.aggregate_stats.io_us, row.baseline.aggregate_stats.io_us);
     result.rows.push_back(std::move(row));
   }
 
@@ -776,13 +1389,21 @@ void ExportBenchComparisonMarkdown(const std::string &path, const BenchCompariso
   out << "- Baseline: `" << summary.baseline_label << "`\n";
   out << "- Candidate: `" << summary.candidate_label << "`\n";
   out << "- Matched runs: " << summary.rows.size() << "\n\n";
-  out << "| approx_kind | beam_width | l_search | baseline_qps | candidate_qps | delta_qps | baseline_recall | candidate_recall | delta_recall | baseline_latency_ms | candidate_latency_ms | delta_latency_ms |\n";
-  out << "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |\n";
+  out << "| approx_kind | beam_width | l_search | graph_cache_budget_bytes | graph_cache_policy | refine_k | refine_ratio | defer_exact | scheduler_policy | scheduler_limit | dynamic_beam | baseline_qps | candidate_qps | delta_qps | baseline_recall | candidate_recall | delta_recall | baseline_latency_ms | candidate_latency_ms | delta_latency_ms |\n";
+  out << "| --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |\n";
   out << std::fixed << std::setprecision(6);
   for (const auto &row : summary.rows) {
     out << "| " << ApproxKindName(row.candidate.approx_kind)
         << " | " << row.candidate.search_config.beam_width
         << " | " << row.candidate.search_config.l_search
+        << " | " << row.candidate.search_config.graph_cache_budget_bytes
+        << " | " << GraphCacheBuildPolicyName(row.candidate.search_config.graph_cache_policy)
+        << " | " << row.candidate.search_config.refine_k
+        << " | " << row.candidate.search_config.refine_ratio
+        << " | " << (row.candidate.search_config.defer_exact_until_refinement ? 1 : 0)
+        << " | " << SchedulerPolicyName(row.candidate.search_config.scheduler_policy)
+        << " | " << row.candidate.search_config.scheduler_policy_limit
+        << " | " << DynamicBeamPolicyName(row.candidate.search_config.dynamic_beam_policy)
         << " | " << row.baseline.qps
         << " | " << row.candidate.qps
         << " | " << row.delta_qps
@@ -806,11 +1427,24 @@ void ExportBenchComparisonTsv(const std::string &path, const BenchComparisonSumm
     throw std::runtime_error("failed to open bench comparison TSV output");
   }
 
-  out << "baseline_label\tcandidate_label\tapprox_kind\ttop_k\tbeam_width\tl_search\tqueries"
+  out << "baseline_label\tcandidate_label\tapprox_kind\ttop_k\tbeam_width\tl_search\tgraph_cache_budget_bytes"
+         "\tgraph_cache_policy\trefine_k\trefine_ratio\tdefer_exact_until_refinement"
+         "\tscheduler_policy\tscheduler_policy_limit\tdynamic_beam_policy\tqueries"
          "\tbaseline_qps\tcandidate_qps\tdelta_qps"
          "\tbaseline_average_latency_ms\tcandidate_average_latency_ms\tdelta_average_latency_ms"
          "\tbaseline_average_recall\tcandidate_average_recall\tdelta_average_recall"
          "\tdelta_async_reads\tdelta_pages_completed\tdelta_resident_expansions\tdelta_approx_evals\tdelta_exact_evals"
+         "\tdelta_bytes_read\tdelta_page_resident_hits\tdelta_graph_replicated_hits"
+         "\tdelta_graph_cache_hits\tdelta_graph_cache_misses\tdelta_graph_cache_expansions"
+         "\tdelta_graph_cache_avoided_reads\tdelta_graph_cache_resident_bytes\tdelta_graph_cache_entries"
+         "\tdelta_graph_cache_build_page_reads"
+         "\tdelta_exact_from_page\tdelta_exact_from_payload\tdelta_refinement_candidates"
+         "\tdelta_refinement_reads\tdelta_approximate_candidates\tdelta_refinement_bound"
+         "\tdelta_refinement_already_exact\tdelta_refinement_exactified\tdelta_deferred_exact_candidates"
+         "\tdelta_read_hits_in_pool\tdelta_read_waste_out_of_pool"
+         "\tdelta_max_inflight_reads\tdelta_max_beam_width\tdelta_beam_width_increases"
+         "\tdelta_scheduler_pending_max\tdelta_scheduler_ready_unexpanded_max\tdelta_scheduler_limit_hits"
+         "\tdelta_poll_calls\tdelta_drain_calls"
          "\tdelta_n_ios\tdelta_n_cmps\tdelta_n_hops\tdelta_cpu_us\tdelta_io_us\n";
   out << std::fixed << std::setprecision(6);
   for (const auto &row : summary.rows) {
@@ -820,6 +1454,14 @@ void ExportBenchComparisonTsv(const std::string &path, const BenchComparisonSumm
         << row.candidate.search_config.top_k << '\t'
         << row.candidate.search_config.beam_width << '\t'
         << row.candidate.search_config.l_search << '\t'
+        << row.candidate.search_config.graph_cache_budget_bytes << '\t'
+        << GraphCacheBuildPolicyName(row.candidate.search_config.graph_cache_policy) << '\t'
+        << row.candidate.search_config.refine_k << '\t'
+        << row.candidate.search_config.refine_ratio << '\t'
+        << (row.candidate.search_config.defer_exact_until_refinement ? 1 : 0) << '\t'
+        << SchedulerPolicyName(row.candidate.search_config.scheduler_policy) << '\t'
+        << row.candidate.search_config.scheduler_policy_limit << '\t'
+        << DynamicBeamPolicyName(row.candidate.search_config.dynamic_beam_policy) << '\t'
         << row.candidate.num_queries << '\t'
         << row.baseline.qps << '\t'
         << row.candidate.qps << '\t'
@@ -835,6 +1477,35 @@ void ExportBenchComparisonTsv(const std::string &path, const BenchComparisonSumm
         << row.delta_resident_expansions << '\t'
         << row.delta_approx_evals << '\t'
         << row.delta_exact_evals << '\t'
+        << row.delta_bytes_read << '\t'
+        << row.delta_page_resident_hits << '\t'
+        << row.delta_graph_replicated_hits << '\t'
+        << row.delta_graph_cache_hits << '\t'
+        << row.delta_graph_cache_misses << '\t'
+        << row.delta_graph_cache_expansions << '\t'
+        << row.delta_graph_cache_avoided_reads << '\t'
+        << row.delta_graph_cache_resident_bytes << '\t'
+        << row.delta_graph_cache_entries << '\t'
+        << row.delta_graph_cache_build_page_reads << '\t'
+        << row.delta_exact_from_page << '\t'
+        << row.delta_exact_from_payload << '\t'
+        << row.delta_refinement_candidates << '\t'
+        << row.delta_refinement_reads << '\t'
+        << row.delta_approximate_candidates << '\t'
+        << row.delta_refinement_bound << '\t'
+        << row.delta_refinement_already_exact << '\t'
+        << row.delta_refinement_exactified << '\t'
+        << row.delta_deferred_exact_candidates << '\t'
+        << row.delta_read_hits_in_pool << '\t'
+        << row.delta_read_waste_out_of_pool << '\t'
+        << row.delta_max_inflight_reads << '\t'
+        << row.delta_max_beam_width << '\t'
+        << row.delta_beam_width_increases << '\t'
+        << row.delta_scheduler_pending_max << '\t'
+        << row.delta_scheduler_ready_unexpanded_max << '\t'
+        << row.delta_scheduler_limit_hits << '\t'
+        << row.delta_poll_calls << '\t'
+        << row.delta_drain_calls << '\t'
         << row.delta_n_ios << '\t'
         << row.delta_n_cmps << '\t'
         << row.delta_n_hops << '\t'

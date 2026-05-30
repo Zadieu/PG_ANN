@@ -1,6 +1,7 @@
 #include "pipeline_search.h"
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -53,6 +54,9 @@ void ValidateSearchInputs(const IndexReader &index, const std::vector<float> &qu
   }
   if (config.top_k == 0 || config.beam_width == 0 || config.l_search == 0) {
     throw std::runtime_error("search config requires top_k > 0, beam_width > 0, and l_search > 0");
+  }
+  if (!std::isfinite(config.refine_ratio) || config.refine_ratio < 0.0f) {
+    throw std::runtime_error("search config requires refine_ratio >= 0");
   }
 }
 
@@ -300,9 +304,69 @@ FilterPlan BuildFilterPlan(const IndexReader &index,
 
 }  // namespace
 
+const char *SchedulerPolicyName(SearchConfig::SchedulerPolicy policy) {
+  switch (policy) {
+    case SearchConfig::SchedulerPolicy::kConservative:
+      return "conservative";
+    case SearchConfig::SchedulerPolicy::kBounded:
+      return "bounded";
+    case SearchConfig::SchedulerPolicy::kAggressive:
+      return "aggressive";
+  }
+  throw std::runtime_error("unsupported scheduler policy");
+}
+
+SearchConfig::SchedulerPolicy ParseSchedulerPolicy(const std::string &text) {
+  if (text == "conservative") {
+    return SearchConfig::SchedulerPolicy::kConservative;
+  }
+  if (text == "bounded") {
+    return SearchConfig::SchedulerPolicy::kBounded;
+  }
+  if (text == "aggressive") {
+    return SearchConfig::SchedulerPolicy::kAggressive;
+  }
+  throw std::runtime_error("unsupported scheduler policy: " + text);
+}
+
+const char *DynamicBeamPolicyName(SearchConfig::DynamicBeamPolicy policy) {
+  switch (policy) {
+    case SearchConfig::DynamicBeamPolicy::kAdaptive:
+      return "adaptive";
+    case SearchConfig::DynamicBeamPolicy::kFixed:
+      return "fixed";
+  }
+  throw std::runtime_error("unsupported dynamic beam policy");
+}
+
+SearchConfig::DynamicBeamPolicy ParseDynamicBeamPolicy(const std::string &text) {
+  if (text == "adaptive") {
+    return SearchConfig::DynamicBeamPolicy::kAdaptive;
+  }
+  if (text == "fixed") {
+    return SearchConfig::DynamicBeamPolicy::kFixed;
+  }
+  throw std::runtime_error("unsupported dynamic beam policy: " + text);
+}
+
 
 PipelinedGraphReplicatedSearcher::PipelinedGraphReplicatedSearcher(const IndexReader &index)
     : index_(index) {
+}
+
+const GraphAdjacencyCache *PipelinedGraphReplicatedSearcher::GraphCacheForConfig(const SearchConfig &config) const {
+  if (config.graph_cache_budget_bytes == 0) {
+    return nullptr;
+  }
+  if (graph_cache_ == nullptr ||
+      graph_cache_budget_bytes_ != config.graph_cache_budget_bytes ||
+      graph_cache_policy_ != config.graph_cache_policy) {
+    graph_cache_ = std::make_unique<GraphAdjacencyCache>(
+        GraphAdjacencyCache::Build(index_, config.graph_cache_budget_bytes, config.graph_cache_policy));
+    graph_cache_budget_bytes_ = config.graph_cache_budget_bytes;
+    graph_cache_policy_ = config.graph_cache_policy;
+  }
+  return graph_cache_->empty() ? nullptr : graph_cache_.get();
 }
 
 std::vector<SearchResult> PipelinedGraphReplicatedSearcher::PipeSearch(const std::vector<float> &query,
@@ -346,7 +410,8 @@ std::vector<SearchResult> PipelinedGraphReplicatedSearcher::Search(const std::ve
                         {},
                         {},
                         pq_codebook_path,
-                        pq_codes_path);
+                        pq_codes_path,
+                        GraphCacheForConfig(config));
   return session.Run();
 }
 
@@ -363,7 +428,12 @@ std::vector<SearchResult> PipelinedGraphReplicatedSearcher::Search(
                         stats,
                         CreateBestEffortPageReader(index_),
                         std::move(approx_distance),
-                        EffectiveLPool(config));
+                        EffectiveLPool(config),
+                        false,
+                        false,
+                        {},
+                        {},
+                        GraphCacheForConfig(config));
   return session.Run();
 }
 
@@ -396,7 +466,8 @@ std::vector<SearchResult> PipelinedGraphReplicatedSearcher::RangeSearch(const st
                         {},
                         {},
                         pq_codebook_path,
-                        pq_codes_path);
+                        pq_codes_path,
+                        GraphCacheForConfig(range_config));
   return session.Run();
 }
 
@@ -475,7 +546,8 @@ std::vector<SearchResult> PipelinedGraphReplicatedSearcher::FilterSearch(const s
                         approx_member,
                         verify_member,
                         pq_codebook_path,
-                        pq_codes_path);
+                        pq_codes_path,
+                        GraphCacheForConfig(config));
   std::vector<SearchResult> results = session.Run();
   if (stats != nullptr &&
       (plan.selected_mode == FilterSearchMode::kPostFilter || plan.selected_mode == FilterSearchMode::kInFilter)) {

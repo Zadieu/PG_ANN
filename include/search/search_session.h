@@ -15,6 +15,7 @@
 #include "pipeline_search.h"
 #include "quant/approx_distance.h"
 #include "search/candidate_pool.h"
+#include "search/graph_cache.h"
 
 namespace hybrid {
 
@@ -32,7 +33,8 @@ class SearchSession {
                 std::function<bool(uint32_t)> is_member_approx = {},
                 std::function<bool(uint32_t, const DiskNodeView &)> is_member = {},
                 const std::string &pq_codebook_path = {},
-                const std::string &pq_codes_path = {});
+                const std::string &pq_codes_path = {},
+                const GraphAdjacencyCache *graph_cache = nullptr);
   SearchSession(const IndexReader &index,
                 const std::vector<float> &query,
                 const SearchConfig &config,
@@ -43,7 +45,8 @@ class SearchSession {
                 bool use_dense_neighbors = false,
                 bool range_mode = false,
                 std::function<bool(uint32_t)> is_member_approx = {},
-                std::function<bool(uint32_t, const DiskNodeView &)> is_member = {});
+                std::function<bool(uint32_t, const DiskNodeView &)> is_member = {},
+                const GraphAdjacencyCache *graph_cache = nullptr);
 
   std::vector<SearchResult> Run();
 
@@ -60,6 +63,7 @@ class SearchSession {
     uint32_t request_slot = 0;
     uint32_t page_id = 0;
     uint32_t layout_index = 0;
+    uint32_t origin_candidate_id = std::numeric_limits<uint32_t>::max();
   };
 
   struct InflightRead {
@@ -113,22 +117,29 @@ class SearchSession {
   void SeedWarmStart();
   size_t ScheduleBestReadRequests(size_t max_reads);
   PollOutcome PollCompletedPages(bool require_all);
-  bool ProcessBufferedCandidate();
+  bool ProcessReadyCandidate();
   size_t CalcBestNode();
   void DrainAndRefine();
   bool ShouldTerminate();
-  bool SubmitNeighborRead(Neighbor *neighbor);
+  bool ShouldThrottleSubmissions();
+  bool SubmitNeighborRead(Neighbor *neighbor, bool count_graph_cache_miss = false);
   uint32_t AcquireRequestSlot();
   void ReleaseRequestSlot(uint32_t request_slot);
   void EvictSlot(uint32_t request_slot);
   PollOutcome ConsumeCompletedInflight(bool require_all);
   void StoreCompletedPages(const std::vector<PageReadCompletion> &completed_pages);
   void RegisterPage(uint32_t request_slot, uint32_t page_id);
-  void MaybeExactify(Neighbor *candidate);
+  bool MaybeExactify(Neighbor *candidate);
+  size_t RefinementBound() const;
+  size_t ReadyUnexpandedCount() const;
+  size_t SchedulerPendingCount() const;
+  size_t EffectiveSchedulerPolicyLimit() const;
+  void RecordSchedulerPendingStats();
   float CurrentRetsetBound() const;
   void ComputeApproximateDistances(const uint32_t *ids, size_t count, float *distances);
   float ApproxDistance(uint32_t id);
   void VisitExpandedNodeNeighbors(const DiskNodeView &node);
+  void VisitCachedNodeNeighbors(const CachedGraphNode &node);
   std::vector<SearchResult> CollectResults() const;
   size_t retset_limit() const;
 
@@ -137,6 +148,7 @@ class SearchSession {
   SearchConfig config_{};
   SearchStats *stats_ = nullptr;
   std::unique_ptr<IPageReader> page_reader_;
+  const GraphAdjacencyCache *graph_cache_ = nullptr;
   ApproxExecutionMode approx_mode_ = ApproxExecutionMode::kPipeannPq;
   FullPrecisionDistanceComputer full_precision_distance_;
   PipeannProductQuantization pipeann_pq_;

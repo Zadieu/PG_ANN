@@ -8,6 +8,7 @@
 
 #include "gorgeous_layout.h"
 #include "quant/approx_distance.h"
+#include "search/graph_cache.h"
 
 namespace pipeann {
 struct Attributes;
@@ -22,8 +23,28 @@ struct SearchConfig {
   uint32_t l_search = 12;
   uint32_t l_pool = 0;
   uint32_t mem_l = 0;
+  uint64_t graph_cache_budget_bytes = 0;
+  GraphCacheBuildPolicy graph_cache_policy = GraphCacheBuildPolicy::kEntryBfs;
+  uint32_t refine_k = 0;
+  float refine_ratio = 0.0f;
+  bool defer_exact_until_refinement = false;
+  uint32_t scheduler_policy_limit = 0;
+  enum class SchedulerPolicy {
+    kConservative = 0,
+    kBounded = 1,
+    kAggressive = 2,
+  } scheduler_policy = SchedulerPolicy::kConservative;
+  enum class DynamicBeamPolicy {
+    kAdaptive = 0,
+    kFixed = 1,
+  } dynamic_beam_policy = DynamicBeamPolicy::kAdaptive;
   float range_partial = std::numeric_limits<float>::infinity();
 };
+
+const char *SchedulerPolicyName(SearchConfig::SchedulerPolicy policy);
+SearchConfig::SchedulerPolicy ParseSchedulerPolicy(const std::string &text);
+const char *DynamicBeamPolicyName(SearchConfig::DynamicBeamPolicy policy);
+SearchConfig::DynamicBeamPolicy ParseDynamicBeamPolicy(const std::string &text);
 
 enum class FilterSearchMode {
   kAuto = 0,
@@ -36,6 +57,36 @@ struct SearchStats {
   uint64_t async_reads = 0;
   uint64_t pages_completed = 0;
   uint64_t resident_expansions = 0;
+  uint64_t bytes_read = 0;
+  uint64_t page_resident_hits = 0;
+  uint64_t graph_replicated_hits = 0;
+  uint64_t graph_cache_hits = 0;
+  uint64_t graph_cache_misses = 0;
+  uint64_t graph_cache_expansions = 0;
+  uint64_t graph_cache_avoided_reads = 0;
+  uint64_t graph_cache_resident_bytes = 0;
+  uint64_t graph_cache_entries = 0;
+  uint64_t graph_cache_build_page_reads = 0;
+  uint64_t exact_from_page = 0;
+  uint64_t exact_from_payload = 0;
+  uint64_t refinement_candidates = 0;
+  uint64_t refinement_reads = 0;
+  uint64_t approximate_candidates = 0;
+  uint64_t refinement_bound = 0;
+  uint64_t refinement_already_exact = 0;
+  uint64_t refinement_exactified = 0;
+  uint64_t deferred_exact_candidates = 0;
+  uint64_t read_hits_in_pool = 0;
+  uint64_t read_waste_out_of_pool = 0;
+  uint64_t max_inflight_reads = 0;
+  uint64_t max_beam_width = 0;
+  uint64_t beam_width_increases = 0;
+  uint64_t scheduler_policy_limit = 0;
+  uint64_t scheduler_pending_max = 0;
+  uint64_t scheduler_ready_unexpanded_max = 0;
+  uint64_t scheduler_limit_hits = 0;
+  uint64_t poll_calls = 0;
+  uint64_t drain_calls = 0;
   uint64_t exact_distance_evals = 0;
   uint64_t approx_distance_evals = 0;
   uint64_t n_ios = 0;
@@ -181,7 +232,12 @@ class PipelinedGraphReplicatedSearcher {
                                              const std::string &pq_codes_path = {}) const;
 
  private:
+  const GraphAdjacencyCache *GraphCacheForConfig(const SearchConfig &config) const;
+
   const IndexReader &index_;
+  mutable std::unique_ptr<GraphAdjacencyCache> graph_cache_;
+  mutable uint64_t graph_cache_budget_bytes_ = std::numeric_limits<uint64_t>::max();
+  mutable GraphCacheBuildPolicy graph_cache_policy_ = GraphCacheBuildPolicy::kEntryBfs;
 };
 
 }  // namespace hybrid

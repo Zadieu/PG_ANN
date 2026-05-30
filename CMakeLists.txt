@@ -60,6 +60,7 @@ add_library(pipeann_gorgeous_core
   src/pipeline_search.cpp
   src/quant/approx_distance.cpp
   src/search/candidate_pool.cpp
+  src/search/graph_cache.cpp
   src/tools/build_pipeline.cpp
   src/tools/tool_cli.cpp
   src/search/search_session.cpp

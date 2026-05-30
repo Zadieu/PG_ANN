@@ -522,3 +522,58 @@ ctest --test-dir build --output-on-failure
 - [路线图](file:///home/adieu/OS/project/docs/ROADMAP.md)
 
 这份 README 主要描述“当前已经能做什么、应该怎么用”；更细的演进计划放在 `docs/` 中维护。
+
+## Graph Cache and Refinement Options
+
+The search and bench CLIs support `--graph_cache_bytes N` plus
+`--graph_cache_policy entry_bfs|page_layout`. Bench also supports
+`--graph_cache_bytes_values v1,v2,...` and
+`--graph_cache_policies entry_bfs,page_layout` for sweeps. A non-zero budget
+builds a Gorgeous-style adjacency-only graph cache. `entry_bfs` follows the
+entry neighborhood; `page_layout` admits nodes in physical page-layout order.
+Query execution expands cache hits without issuing a page read.
+
+The refinement stage can be controlled with `--refine_k N`,
+`--refine_ratio F`, and `--defer_exact_until_refinement`. Bench sweep variants
+are `--refine_k_values`, `--refine_ratio_values`, and
+`--defer_exact_values`. Defaults preserve the previous behavior: exact vectors
+are evaluated during page expansion when available and the final refinement
+bound is `l_pool`.
+
+Scheduler behavior is controlled by
+`--scheduler_policy conservative|bounded|aggressive`,
+`--scheduler_policy_limit N`, and `--dynamic_beam_policy adaptive|fixed`.
+Bench variants are `--scheduler_policies`,
+`--scheduler_policy_limit_values`, and `--dynamic_beam_policies`. The exported
+M4 counters include the observed pending-work bound:
+`scheduler_policy_limit_observed`, `scheduler_pending_max`,
+`scheduler_ready_unexpanded_max`, and `scheduler_limit_hits`.
+
+Example small M2-M4 sweep:
+
+```bash
+./build/pipeann_gorgeous_bench \
+  --index build_data/sample_graph_relayout.index \
+  --queries data/query.fvecs \
+  --query_format fvecs \
+  --ground_truth results/ground_truth.txt \
+  --top_k 10 \
+  --approx_kinds full,pq \
+  --beam_widths 4,8 \
+  --l_search_values 32,64 \
+  --graph_cache_bytes_values 0,1048576 \
+  --graph_cache_policies entry_bfs,page_layout \
+  --refine_k_values 10,32 \
+  --defer_exact_values 0,1 \
+  --scheduler_policies conservative,bounded \
+  --dynamic_beam_policies adaptive,fixed \
+  --experiment_root results/experiments \
+  --experiment_name m2_m4_sweep
+```
+
+Relevant exported counters include `graph_cache_hits`,
+`graph_cache_misses`, `graph_cache_avoided_reads`,
+`graph_cache_resident_bytes`, `graph_cache_entries`, `bytes_read`,
+`graph_replicated_hits`, `refinement_reads`, `refinement_bound`,
+`refinement_exactified`, `deferred_exact_candidates`, `scheduler_pending_max`,
+and `scheduler_limit_hits`.

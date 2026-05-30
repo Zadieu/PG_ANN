@@ -167,6 +167,12 @@ int main() {
   assert(pq_bench_summary.num_queries == 3);
   assert(!pq_bench_summary.first_query_results.empty());
   assert(pq_bench_summary.approx_backend_name == "pipeann_pq");
+  assert(pq_bench_summary.aggregate_stats.bytes_read > 0);
+  assert(pq_bench_summary.aggregate_stats.page_resident_hits ==
+         pq_bench_summary.aggregate_stats.resident_expansions);
+  assert(pq_bench_summary.aggregate_stats.exact_from_page +
+             pq_bench_summary.aggregate_stats.exact_from_payload ==
+         pq_bench_summary.aggregate_stats.exact_distance_evals);
   assert(pq_bench_summary.aggregate_stats.approx_distance_evals >= pq_bench_summary.aggregate_stats.exact_distance_evals);
   assert(pq_bench_summary.has_recall);
   assert(pq_bench_summary.average_recall >= 0.0);
@@ -233,17 +239,33 @@ int main() {
   const std::vector<std::vector<uint32_t>> reloaded_generated_truth =
       hybrid::LoadGroundTruthIds(generated_truth_path.string());
   assert(reloaded_generated_truth == generated_truth);
+  assert(hybrid::ParseGraphCachePolicyList("entry_bfs,page_layout").size() == 2);
+  assert(hybrid::ParseBoolList("0,1,true,false").size() == 4);
+  assert(hybrid::ParseSchedulerPolicyList("conservative,bounded,aggressive").size() == 3);
+  assert(hybrid::ParseDynamicBeamPolicyList("adaptive,fixed").size() == 2);
 
   hybrid::BenchSweepConfig sweep_config;
   sweep_config.base_config = pq_bench_config;
   sweep_config.beam_widths = {2, 3};
   sweep_config.l_search_values = {6};
+  sweep_config.graph_cache_budget_bytes_values = {0, 8192};
+  sweep_config.graph_cache_policies = {hybrid::GraphCacheBuildPolicy::kEntryBfs};
+  sweep_config.refine_k_values = {4};
+  sweep_config.refine_ratio_values = {0.0f};
+  sweep_config.defer_exact_until_refinement_values = {0, 1};
+  sweep_config.scheduler_policies = {hybrid::SearchConfig::SchedulerPolicy::kConservative,
+                                     hybrid::SearchConfig::SchedulerPolicy::kBounded};
+  sweep_config.scheduler_policy_limit_values = {0};
+  sweep_config.dynamic_beam_policies = {hybrid::SearchConfig::DynamicBeamPolicy::kAdaptive};
   sweep_config.approx_kinds = {hybrid::ApproxDistanceKind::kFullPrecision,
                                hybrid::ApproxDistanceKind::kProductQuantization};
   const hybrid::BenchSweepSummary sweep_summary = hybrid::RunBenchSweep(sweep_config);
-  assert(sweep_summary.runs.size() == 4);
+  assert(sweep_summary.runs.size() == 32);
   bool saw_full_precision = false;
   bool saw_product_quantization = false;
+  bool saw_graph_cache = false;
+  bool saw_deferred_exact = false;
+  bool saw_bounded_scheduler = false;
   for (const auto &run : sweep_summary.runs) {
     assert(run.has_recall);
     assert(run.average_recall >= 0.0);
@@ -254,9 +276,29 @@ int main() {
     if (run.approx_kind == hybrid::ApproxDistanceKind::kProductQuantization) {
       saw_product_quantization = true;
     }
+    if (run.search_config.graph_cache_budget_bytes != 0) {
+      saw_graph_cache = true;
+      assert(run.aggregate_stats.graph_cache_entries > 0);
+      assert(run.aggregate_stats.graph_cache_hits > 0);
+    }
+    assert(run.search_config.refine_k == 4);
+    assert(run.aggregate_stats.refinement_bound >= run.search_config.top_k);
+    assert(run.aggregate_stats.scheduler_policy_limit > 0);
+    assert(run.aggregate_stats.scheduler_pending_max > 0);
+    if (run.search_config.scheduler_policy == hybrid::SearchConfig::SchedulerPolicy::kBounded) {
+      saw_bounded_scheduler = true;
+    }
+    if (run.search_config.defer_exact_until_refinement) {
+      saw_deferred_exact = true;
+      assert(run.aggregate_stats.deferred_exact_candidates > 0);
+      assert(run.aggregate_stats.refinement_exactified > 0);
+    }
   }
   assert(saw_full_precision);
   assert(saw_product_quantization);
+  assert(saw_graph_cache);
+  assert(saw_deferred_exact);
+  assert(saw_bounded_scheduler);
 
   const std::filesystem::path export_path = out_dir / "bench.tsv";
   hybrid::ExportBenchSummariesTsv(export_path.string(), sweep_summary.runs);
@@ -268,6 +310,16 @@ int main() {
   const std::string export_text = buffer.str();
   assert(export_text.find("approx_kind") != std::string::npos);
   assert(export_text.find("average_recall") != std::string::npos);
+  assert(export_text.find("bytes_read") != std::string::npos);
+  assert(export_text.find("graph_replicated_hits") != std::string::npos);
+  assert(export_text.find("graph_cache_hits") != std::string::npos);
+  assert(export_text.find("graph_cache_budget_bytes") != std::string::npos);
+  assert(export_text.find("graph_cache_policy") != std::string::npos);
+  assert(export_text.find("refine_k") != std::string::npos);
+  assert(export_text.find("defer_exact_until_refinement") != std::string::npos);
+  assert(export_text.find("deferred_exact_candidates") != std::string::npos);
+  assert(export_text.find("scheduler_policy") != std::string::npos);
+  assert(export_text.find("scheduler_pending_max") != std::string::npos);
 
   const std::filesystem::path experiment_dir = out_dir / "experiment";
   hybrid::ExportBenchExperiment(experiment_dir.string(), sweep_config, sweep_summary);
@@ -282,6 +334,14 @@ int main() {
   const std::string manifest_text = manifest_buffer.str();
   assert(manifest_text.find("query_count=3") != std::string::npos);
   assert(manifest_text.find("approx_kinds=full,pq") != std::string::npos);
+  assert(manifest_text.find("graph_cache_budget_bytes_values=0,8192") != std::string::npos);
+  assert(manifest_text.find("graph_cache_policies=entry_bfs") != std::string::npos);
+  assert(manifest_text.find("refine_k_values=4") != std::string::npos);
+  assert(manifest_text.find("refine_ratio_values=0.000000") != std::string::npos);
+  assert(manifest_text.find("defer_exact_until_refinement_values=0,1") != std::string::npos);
+  assert(manifest_text.find("scheduler_policies=conservative,bounded") != std::string::npos);
+  assert(manifest_text.find("scheduler_policy_limit_values=0") != std::string::npos);
+  assert(manifest_text.find("dynamic_beam_policies=adaptive") != std::string::npos);
   assert(manifest_text.find("pipeann_base_data=") != std::string::npos);
   assert(manifest_text.find("full_data=") != std::string::npos);
   assert(manifest_text.find("pipeann_pq_pivots=") != std::string::npos);
@@ -337,6 +397,10 @@ int main() {
   comparison_tsv_buffer << comparison_tsv_in.rdbuf();
   const std::string comparison_tsv_text = comparison_tsv_buffer.str();
   assert(comparison_tsv_text.find("delta_qps") != std::string::npos);
+  assert(comparison_tsv_text.find("delta_bytes_read") != std::string::npos);
+  assert(comparison_tsv_text.find("delta_graph_cache_hits") != std::string::npos);
+  assert(comparison_tsv_text.find("delta_deferred_exact_candidates") != std::string::npos);
+  assert(comparison_tsv_text.find("delta_scheduler_pending_max") != std::string::npos);
 
   return 0;
 }
