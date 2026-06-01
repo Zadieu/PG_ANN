@@ -3,7 +3,7 @@
 # Switch dataset in the config_local.sh file by calling the desired function
 
 # your path
-DATA_DIR="/home/pqyin/data"
+DATA_DIR="/home/dell/data"
 
 dataset_sift_learn() {
   BASE_PATH=${DATA_DIR}/sift/sift_learn.fbin
@@ -20,4 +20,19 @@ dataset_sift_learn() {
   N_PQ_CODE=4         # represent PQ dimension. 4 represents 4 dim compressed to one PQ byte
                       # Usually, for single-modal dataset, N_PQ_CODE should be 4 for optimal performance.
                       # For multi-modal dataset, N_PQ_CODE should be 2 for optimal performance.
+}
+
+dataset_sift1m() {
+  BASE_PATH=${DATA_DIR}/sift/sift_base.fbin
+  QUERY_FILE=${DATA_DIR}/sift/sift_query.fbin
+  GT_FILE=${DATA_DIR}/sift/computed_gt_1000_sift1m.bin
+  PREFIX=sift1M
+  DATA_TYPE=float
+  DIST_FN=l2
+  K=10
+  DATA_DIM=128
+  DATA_N=1000000
+  SECTOR_LEN=4096
+  GR_SECTOR_LEN=4096
+  N_PQ_CODE=4
 }

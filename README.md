@@ -1,6 +1,7 @@
-# Gorgeous: High-Performance Disk-Based Vector Search
+﻿# Gorgeous: High-Performance Disk-Based Vector Search
 
 本项目是在 Gorgeous 基础上使用静态缓存 + 动态缓存的方案。核心思想是在原论文静态 graph cache 的基础上，划分少量缓存空间作为可替换的动态 Cache，用于捕获查询过程中的热点邻接表，减少 SSD Graph IO，并在保持 Recall@10 的情况下提升 QPS、降低查询延迟。
+
 
 Gorgeous is a high-performance disk-based Approximate Nearest Neighbor Search (ANNS) system designed to efficiently handle large-scale high-dimensional vector datasets. This implementation is based on the research paper *Revisiting the Data Layout for Disk-based High-Dimensional Vector Search*.
 
@@ -98,3 +99,4 @@ If you find Gorgeous useful in your research, please cite:
 ## 📄 License
 
 MIT License - see [LICENSE](LICENSE) for details.
+
