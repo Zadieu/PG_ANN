@@ -42,6 +42,9 @@ MEM_L=0     # non-zero to enable in-memory navigation index
 #####################
 DECO_IMPL=1                     # 1 to enable Gorgeous
 MEM_GRAPH_USE_RATIO=0.1         # graph cached ratio
+# Dynamic graph cache ratio. Use a fixed ratio such as 0.01, or "auto"
+# to choose the dynamic cache size from dataset scale and dimensionality.
+# export GORGEOUS_DYNAMIC_GRAPH_CACHE_RATIO=auto
 MEM_EMB_USE_RATIO=0.0           # embedding cached ratio
 EMB_SEARCH_RATIO=0.4            # ratio of embedding being search when using mem graph
 USE_DISK_GRAPH_CACHE_INDEX=0    # new index with cache neighbor graph in a page.

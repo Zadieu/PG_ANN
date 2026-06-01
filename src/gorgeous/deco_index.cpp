@@ -32,10 +32,59 @@
 #define GRAPH_CACHE_INDEX 3
 
 namespace diskann {
-  float get_dynamic_graph_cache_ratio() {
+  bool is_auto_dynamic_graph_cache_ratio(const std::string& value) {
+    return value == "auto" || value == "AUTO" ||
+           value == "adaptive" || value == "ADAPTIVE";
+  }
+
+  float choose_adaptive_dynamic_graph_cache_ratio(_u64 num_points, _u64 data_dim,
+                                                  float mem_graph_use_ratio) {
+    float ratio = 0.01f;
+    if (num_points >= 100000000ULL) {
+      ratio = 0.03f;
+    } else if (num_points >= 10000000ULL) {
+      ratio = 0.02f;
+    } else if (num_points < 1000000ULL) {
+      ratio = 0.005f;
+    }
+
+    if (data_dim >= 512) {
+      ratio += 0.01f;
+    } else if (data_dim >= 256) {
+      ratio += 0.005f;
+    }
+
+    if (mem_graph_use_ratio < 0.05f) {
+      ratio += 0.005f;
+    } else if (mem_graph_use_ratio >= 0.2f) {
+      ratio -= 0.005f;
+    }
+
+    if (ratio < 0.005f) {
+      ratio = 0.005f;
+    }
+    if (ratio > 0.05f) {
+      ratio = 0.05f;
+    }
+    return ratio;
+  }
+
+  float get_dynamic_graph_cache_ratio(_u64 num_points, _u64 data_dim,
+                                      float mem_graph_use_ratio) {
     const char* ratio_env = std::getenv("GORGEOUS_DYNAMIC_GRAPH_CACHE_RATIO");
     if (ratio_env == nullptr) {
       return 0.0f;
+    }
+    std::string ratio_value(ratio_env);
+    if (is_auto_dynamic_graph_cache_ratio(ratio_value)) {
+      float ratio = choose_adaptive_dynamic_graph_cache_ratio(
+          num_points, data_dim, mem_graph_use_ratio);
+      std::cout << "auto dynamic graph cache ratio selected: " << ratio
+                << " (num_points=" << num_points
+                << ", data_dim=" << data_dim
+                << ", mem_graph_use_ratio=" << mem_graph_use_ratio << ")"
+                << std::endl;
+      return ratio;
     }
     float ratio = std::strtof(ratio_env, nullptr);
     if (ratio < 0.0f) {
@@ -288,7 +337,8 @@ namespace diskann {
     dynamic_cache_hits_.clear();
     if (mem_graph_use_ratio < 1) {
       n_cached_id = (int) (num_points * mem_graph_use_ratio);
-      float dynamic_cache_ratio = get_dynamic_graph_cache_ratio();
+      float dynamic_cache_ratio = get_dynamic_graph_cache_ratio(
+          num_points, data_dim, mem_graph_use_ratio);
       if (n_cached_id > 1 && dynamic_cache_ratio > 0.0f) {
         _u32 total_graph_cache_slots = n_cached_id;
         dynamic_graph_cache_size = static_cast<_u32>(total_graph_cache_slots * dynamic_cache_ratio);
