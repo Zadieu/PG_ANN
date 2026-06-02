@@ -22,13 +22,15 @@ SearchSession::SearchSession(const IndexReader &index,
                              std::function<bool(uint32_t, const DiskNodeView &)> is_member,
                              const std::string &pq_codebook_path,
                              const std::string &pq_codes_path,
-                             const GraphAdjacencyCache *graph_cache)
+                             const GraphAdjacencyCache *graph_cache,
+                             const PipeannProductQuantization *shared_pq)
     : index_(index),
       query_(query),
       config_(config),
       stats_(stats),
       page_reader_(std::move(page_reader)),
       graph_cache_(graph_cache),
+      shared_pq_(shared_pq),
       approx_mode_(approx_kind == ApproxDistanceKind::kProductQuantization ? ApproxExecutionMode::kPipeannPq
                                                                            : ApproxExecutionMode::kFullPrecision),
       full_precision_distance_(index),
@@ -45,8 +47,15 @@ SearchSession::SearchSession(const IndexReader &index,
     is_member_ = [](uint32_t, const DiskNodeView &) { return true; };
   }
   if (approx_mode_ == ApproxExecutionMode::kPipeannPq) {
-    pipeann_pq_.Load(pq_codebook_path, pq_codes_path);
-    pipeann_pq_.InitializeQuery(query_, &pq_query_distance_table_);
+    if (shared_pq_ != nullptr) {
+      if (!shared_pq_->ready()) {
+        throw std::runtime_error("shared PipeANN PQ must be loaded before search");
+      }
+      shared_pq_->InitializeQuery(query_, &pq_query_distance_table_);
+    } else {
+      pipeann_pq_.Load(pq_codebook_path, pq_codes_path);
+      pipeann_pq_.InitializeQuery(query_, &pq_query_distance_table_);
+    }
   } else {
     full_precision_distance_.BeginQuery(query_);
   }
@@ -746,7 +755,11 @@ void SearchSession::ComputeApproximateDistances(const uint32_t *ids, size_t coun
   }
   switch (approx_mode_) {
     case ApproxExecutionMode::kPipeannPq:
-      pipeann_pq_.DistanceBatch(pq_query_distance_table_, ids, count, distances);
+      if (shared_pq_ != nullptr) {
+        shared_pq_->DistanceBatch(pq_query_distance_table_, ids, count, distances);
+      } else {
+        pipeann_pq_.DistanceBatch(pq_query_distance_table_, ids, count, distances);
+      }
       return;
     case ApproxExecutionMode::kFullPrecision:
       for (size_t i = 0; i < count; ++i) {

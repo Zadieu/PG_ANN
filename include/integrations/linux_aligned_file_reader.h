@@ -62,6 +62,7 @@ class LinuxAlignedFileReader {
 
  private:
   int fd_ = -1;
+  bool thread_registered_ = false;
 };
 
 }  // namespace hybrid::pipeann_integration

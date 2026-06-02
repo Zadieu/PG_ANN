@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <chrono>
 #include <cctype>
+#include <cmath>
+#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -39,6 +41,29 @@ double ComputeRecallAtK(const std::vector<SearchResult> &results,
     }
   }
   return static_cast<double>(hits) / static_cast<double>(cutoff);
+}
+
+double MeanLatencyUs(const std::vector<uint64_t> &latency_us) {
+  if (latency_us.empty()) {
+    return 0.0;
+  }
+  double sum = 0.0;
+  for (uint64_t value : latency_us) {
+    sum += static_cast<double>(value);
+  }
+  return sum / static_cast<double>(latency_us.size());
+}
+
+double PercentileLatencyUs(std::vector<uint64_t> latency_us, double percentile) {
+  if (latency_us.empty()) {
+    return 0.0;
+  }
+  std::sort(latency_us.begin(), latency_us.end());
+  const double clamped = std::clamp(percentile, 0.0, 1.0);
+  const size_t rank = clamped <= 0.0
+                          ? 0
+                          : static_cast<size_t>(std::ceil(clamped * static_cast<double>(latency_us.size()))) - 1;
+  return static_cast<double>(latency_us[std::min(rank, latency_us.size() - 1)]);
 }
 
 const char *ApproxKindName(ApproxDistanceKind kind) {
@@ -286,6 +311,7 @@ std::string SummaryRunKey(const BenchToolSummary &summary) {
       << SchedulerPolicyName(summary.search_config.scheduler_policy) << '|'
       << summary.search_config.scheduler_policy_limit << '|'
       << DynamicBeamPolicyName(summary.search_config.dynamic_beam_policy) << '|'
+      << summary.num_threads << '|'
       << summary.num_queries;
   return out.str();
 }
@@ -692,12 +718,18 @@ SearchToolSummary RunSearchTool(const SearchToolConfig &config) {
 }
 
 BenchToolSummary RunBenchTool(const BenchToolConfig &config) {
+  if (config.num_threads == 0) {
+    throw std::runtime_error("bench num_threads must be positive");
+  }
   std::unique_ptr<IndexReader> index = LoadIndexReader(config.index_path, config.approx_path);
 
   BenchToolSummary summary;
   summary.num_queries = static_cast<uint32_t>(config.queries.size());
+  summary.num_threads = config.num_threads;
   summary.search_config = config.search_config;
   summary.approx_kind = config.approx_kind;
+  summary.approx_backend_name =
+      config.approx_kind == ApproxDistanceKind::kProductQuantization ? "pipeann_pq" : "full_precision";
   if (config.queries.empty()) {
     throw std::runtime_error("bench requires at least one query");
   }
@@ -705,33 +737,116 @@ BenchToolSummary RunBenchTool(const BenchToolConfig &config) {
     throw std::runtime_error("ground truth row count must match query count");
   }
 
-  PipelinedGraphReplicatedSearcher searcher(*index);
-  double recall_sum = 0.0;
-  const auto start = std::chrono::steady_clock::now();
-  for (size_t query_id = 0; query_id < config.queries.size(); ++query_id) {
-    SearchStats stats;
-    summary.approx_backend_name =
-        config.approx_kind == ApproxDistanceKind::kProductQuantization ? "pipeann_pq" : "full_precision";
-    const std::vector<SearchResult> results = searcher.Search(config.queries[query_id],
-                                                              config.search_config,
-                                                              config.approx_kind,
-                                                              &stats,
-                                                              config.pq_codebook_path,
-                                                              config.pq_codes_path);
+  std::unique_ptr<GraphAdjacencyCache> graph_cache;
+  if (config.search_config.graph_cache_budget_bytes != 0) {
+    graph_cache = std::make_unique<GraphAdjacencyCache>(
+        GraphAdjacencyCache::Build(*index,
+                                   config.search_config.graph_cache_budget_bytes,
+                                   config.search_config.graph_cache_policy));
+    if (graph_cache->empty()) {
+      graph_cache.reset();
+    }
+  }
 
-    if (query_id == 0) {
-      summary.first_query_results = results;
+  std::unique_ptr<PipeannProductQuantization> shared_pq;
+  if (config.approx_kind == ApproxDistanceKind::kProductQuantization) {
+    shared_pq = std::make_unique<PipeannProductQuantization>(*index);
+    shared_pq->Load(config.pq_codebook_path, config.pq_codes_path);
+  }
+
+  std::vector<SearchStats> query_stats(config.queries.size());
+  std::vector<double> query_recalls(config.queries.size(), 0.0);
+  std::exception_ptr first_exception;
+  const bool use_thread_local_index =
+      config.num_threads > 1 && index->storage_format() == IndexStorageFormat::kGorgeousNative;
+
+  std::chrono::steady_clock::time_point start;
+
+#pragma omp parallel num_threads(config.num_threads)
+  {
+    std::unique_ptr<IndexReader> thread_index_storage;
+    const IndexReader *thread_index = index.get();
+    std::unique_ptr<PipelinedGraphReplicatedSearcher> searcher;
+    try {
+      if (use_thread_local_index) {
+        thread_index_storage = LoadIndexReader(config.index_path, config.approx_path);
+        thread_index = thread_index_storage.get();
+      }
+      searcher = std::make_unique<PipelinedGraphReplicatedSearcher>(*thread_index);
+    } catch (...) {
+#pragma omp critical(bench_first_exception)
+      {
+        if (first_exception == nullptr) {
+          first_exception = std::current_exception();
+        }
+      }
     }
-    if (!config.ground_truth_ids.empty()) {
-      const uint32_t k = config.recall_at_k == 0 ? config.search_config.top_k : config.recall_at_k;
-      recall_sum += ComputeRecallAtK(results, config.ground_truth_ids[query_id], k);
+
+#pragma omp barrier
+#pragma omp single
+    {
+      start = std::chrono::steady_clock::now();
     }
-    AccumulateSearchStats(&summary.aggregate_stats, stats);
+
+#pragma omp for schedule(dynamic)
+    for (int64_t query_id = 0; query_id < static_cast<int64_t>(config.queries.size()); ++query_id) {
+      if (searcher == nullptr) {
+        continue;
+      }
+      try {
+        SearchStats stats;
+        std::unique_ptr<IPageReader> page_reader =
+            CreateBestEffortPageReader(*thread_index, config.num_threads);
+        const std::vector<SearchResult> results =
+            searcher->Search(config.queries[static_cast<size_t>(query_id)],
+                             config.search_config,
+                             config.approx_kind,
+                             std::move(page_reader),
+                             graph_cache.get(),
+                             shared_pq.get(),
+                             &stats,
+                             config.pq_codebook_path,
+                             config.pq_codes_path);
+
+        if (query_id == 0) {
+          summary.first_query_results = results;
+        }
+        if (!config.ground_truth_ids.empty()) {
+          const uint32_t k = config.recall_at_k == 0 ? config.search_config.top_k : config.recall_at_k;
+          query_recalls[static_cast<size_t>(query_id)] =
+              ComputeRecallAtK(results, config.ground_truth_ids[static_cast<size_t>(query_id)], k);
+        }
+        query_stats[static_cast<size_t>(query_id)] = stats;
+      } catch (...) {
+#pragma omp critical(bench_first_exception)
+        {
+          if (first_exception == nullptr) {
+            first_exception = std::current_exception();
+          }
+        }
+      }
+    }
+  }
+
+  if (first_exception != nullptr) {
+    std::rethrow_exception(first_exception);
+  }
+
+  double recall_sum = 0.0;
+  std::vector<uint64_t> query_latency_us;
+  query_latency_us.reserve(config.queries.size());
+  for (size_t query_id = 0; query_id < config.queries.size(); ++query_id) {
+    AccumulateSearchStats(&summary.aggregate_stats, query_stats[query_id]);
+    recall_sum += query_recalls[query_id];
+    query_latency_us.push_back(query_stats[query_id].total_us);
   }
   const auto end = std::chrono::steady_clock::now();
   summary.elapsed_ms =
       std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(end - start).count();
   summary.average_latency_ms = summary.elapsed_ms / static_cast<double>(summary.num_queries);
+  summary.mean_latency_us = MeanLatencyUs(query_latency_us);
+  summary.p95_latency_us = PercentileLatencyUs(query_latency_us, 0.95);
+  summary.p99_latency_us = PercentileLatencyUs(query_latency_us, 0.99);
   summary.qps = summary.elapsed_ms > 0.0 ? static_cast<double>(summary.num_queries) * 1000.0 / summary.elapsed_ms
                                          : 0.0;
   if (!config.ground_truth_ids.empty()) {
@@ -782,31 +897,37 @@ BenchSweepSummary RunBenchSweep(const BenchSweepConfig &config) {
   const std::vector<ApproxDistanceKind> approx_kinds =
       config.approx_kinds.empty() ? std::vector<ApproxDistanceKind>{config.base_config.approx_kind}
                                   : config.approx_kinds;
+  const std::vector<uint32_t> thread_counts =
+      config.thread_counts.empty() ? std::vector<uint32_t>{config.base_config.num_threads}
+                                   : config.thread_counts;
 
   for (ApproxDistanceKind kind : approx_kinds) {
-    for (uint32_t beam_width : beam_widths) {
-      for (uint32_t l_search : l_search_values) {
-        for (uint64_t graph_cache_budget_bytes : graph_cache_budget_bytes_values) {
-          for (GraphCacheBuildPolicy graph_cache_policy : graph_cache_policies) {
-            for (uint32_t refine_k : refine_k_values) {
-              for (float refine_ratio : refine_ratio_values) {
-                for (uint8_t defer_exact : defer_exact_until_refinement_values) {
-                  for (SearchConfig::SchedulerPolicy scheduler_policy : scheduler_policies) {
-                    for (uint32_t scheduler_policy_limit : scheduler_policy_limit_values) {
-                      for (SearchConfig::DynamicBeamPolicy dynamic_beam_policy : dynamic_beam_policies) {
-                        BenchToolConfig run_config = config.base_config;
-                        run_config.approx_kind = kind;
-                        run_config.search_config.beam_width = beam_width;
-                        run_config.search_config.l_search = l_search;
-                        run_config.search_config.graph_cache_budget_bytes = graph_cache_budget_bytes;
-                        run_config.search_config.graph_cache_policy = graph_cache_policy;
-                        run_config.search_config.refine_k = refine_k;
-                        run_config.search_config.refine_ratio = refine_ratio;
-                        run_config.search_config.defer_exact_until_refinement = defer_exact != 0;
-                        run_config.search_config.scheduler_policy = scheduler_policy;
-                        run_config.search_config.scheduler_policy_limit = scheduler_policy_limit;
-                        run_config.search_config.dynamic_beam_policy = dynamic_beam_policy;
-                        summary.runs.push_back(RunBenchTool(run_config));
+    for (uint32_t num_threads : thread_counts) {
+      for (uint32_t beam_width : beam_widths) {
+        for (uint32_t l_search : l_search_values) {
+          for (uint64_t graph_cache_budget_bytes : graph_cache_budget_bytes_values) {
+            for (GraphCacheBuildPolicy graph_cache_policy : graph_cache_policies) {
+              for (uint32_t refine_k : refine_k_values) {
+                for (float refine_ratio : refine_ratio_values) {
+                  for (uint8_t defer_exact : defer_exact_until_refinement_values) {
+                    for (SearchConfig::SchedulerPolicy scheduler_policy : scheduler_policies) {
+                      for (uint32_t scheduler_policy_limit : scheduler_policy_limit_values) {
+                        for (SearchConfig::DynamicBeamPolicy dynamic_beam_policy : dynamic_beam_policies) {
+                          BenchToolConfig run_config = config.base_config;
+                          run_config.approx_kind = kind;
+                          run_config.num_threads = num_threads;
+                          run_config.search_config.beam_width = beam_width;
+                          run_config.search_config.l_search = l_search;
+                          run_config.search_config.graph_cache_budget_bytes = graph_cache_budget_bytes;
+                          run_config.search_config.graph_cache_policy = graph_cache_policy;
+                          run_config.search_config.refine_k = refine_k;
+                          run_config.search_config.refine_ratio = refine_ratio;
+                          run_config.search_config.defer_exact_until_refinement = defer_exact != 0;
+                          run_config.search_config.scheduler_policy = scheduler_policy;
+                          run_config.search_config.scheduler_policy_limit = scheduler_policy_limit;
+                          run_config.search_config.dynamic_beam_policy = dynamic_beam_policy;
+                          summary.runs.push_back(RunBenchTool(run_config));
+                        }
                       }
                     }
                   }
@@ -833,7 +954,7 @@ void ExportBenchSummariesTsv(const std::string &path, const std::vector<BenchToo
   out << "approx_kind\tapprox_backend\ttop_k\tbeam_width\tl_search\tgraph_cache_budget_bytes"
          "\tgraph_cache_policy\trefine_k\trefine_ratio\tdefer_exact_until_refinement"
          "\tscheduler_policy\tscheduler_policy_limit\tdynamic_beam_policy"
-         "\tqueries\telapsed_ms\taverage_latency_ms\tqps"
+         "\tthreads\tqueries\telapsed_ms\taverage_latency_ms\tmean_latency_us\tp95_latency_us\tp99_latency_us\tqps"
          "\tasync_reads\tpages_completed\tresident_expansions\tapprox_evals\texact_evals"
          "\tn_ios\tn_cmps\tn_hops\tcpu_us\tio_us\tbytes_read\tpage_resident_hits"
          "\tgraph_replicated_hits\tgraph_cache_hits\tgraph_cache_misses\tgraph_cache_expansions"
@@ -856,8 +977,10 @@ void ExportBenchSummariesTsv(const std::string &path, const std::vector<BenchToo
         << SchedulerPolicyName(summary.search_config.scheduler_policy) << '\t'
         << summary.search_config.scheduler_policy_limit << '\t'
         << DynamicBeamPolicyName(summary.search_config.dynamic_beam_policy) << '\t'
+        << summary.num_threads << '\t'
         << summary.num_queries << '\t' << summary.elapsed_ms << '\t' << summary.average_latency_ms << '\t'
-        << summary.qps << '\t'
+        << summary.mean_latency_us << '\t' << summary.p95_latency_us << '\t'
+        << summary.p99_latency_us << '\t' << summary.qps << '\t'
         << summary.aggregate_stats.async_reads << '\t' << summary.aggregate_stats.pages_completed << '\t'
         << summary.aggregate_stats.resident_expansions << '\t'
         << summary.aggregate_stats.approx_distance_evals << '\t'
@@ -957,6 +1080,9 @@ void ExportBenchExperiment(const std::string &directory,
   const std::vector<ApproxDistanceKind> approx_kinds =
       config.approx_kinds.empty() ? std::vector<ApproxDistanceKind>{config.base_config.approx_kind}
                                   : config.approx_kinds;
+  const std::vector<uint32_t> thread_counts =
+      config.thread_counts.empty() ? std::vector<uint32_t>{config.base_config.num_threads}
+                                   : config.thread_counts;
   const std::string full_data_path =
       config.base_config.approx_path.empty() ? DefaultPipeannBaseDataPath(config.base_config.index_path)
                                              : config.base_config.approx_path;
@@ -986,6 +1112,7 @@ void ExportBenchExperiment(const std::string &directory,
   manifest << "scheduler_policy_limit_values=" << JoinUint32Values(scheduler_policy_limit_values) << '\n';
   manifest << "dynamic_beam_policies=" << JoinDynamicBeamPolicies(dynamic_beam_policies) << '\n';
   manifest << "approx_kinds=" << JoinApproxKinds(approx_kinds) << '\n';
+  manifest << "thread_counts=" << JoinUint32Values(thread_counts) << '\n';
   manifest << "summary_tsv=" << summary_path.string() << '\n';
 
   if (!config.base_config.ground_truth_ids.empty()) {
@@ -1008,6 +1135,7 @@ void ExportBenchExperiment(const std::string &directory,
 
     run_out << "approx_kind=" << ApproxKindName(run.approx_kind) << '\n';
     run_out << "approx_backend=" << run.approx_backend_name << '\n';
+    run_out << "threads=" << run.num_threads << '\n';
     run_out << "queries=" << run.num_queries << '\n';
     run_out << "top_k=" << run.search_config.top_k << '\n';
     run_out << "beam_width=" << run.search_config.beam_width << '\n';
@@ -1023,6 +1151,9 @@ void ExportBenchExperiment(const std::string &directory,
     run_out << std::fixed << std::setprecision(6);
     run_out << "elapsed_ms=" << run.elapsed_ms << '\n';
     run_out << "average_latency_ms=" << run.average_latency_ms << '\n';
+    run_out << "mean_latency_us=" << run.mean_latency_us << '\n';
+    run_out << "p95_latency_us=" << run.p95_latency_us << '\n';
+    run_out << "p99_latency_us=" << run.p99_latency_us << '\n';
     run_out << "qps=" << run.qps << '\n';
     run_out << "average_recall=" << (run.has_recall ? run.average_recall : -1.0) << '\n';
     run_out << "async_reads=" << run.aggregate_stats.async_reads << '\n';
@@ -1174,10 +1305,17 @@ std::vector<BenchToolSummary> LoadBenchSummariesTsv(const std::string &path) {
       summary.search_config.dynamic_beam_policy =
           ParseDynamicBeamPolicy(fields[dynamic_beam_policy_column->second]);
     }
+    summary.num_threads = ParseOptionalUint32Column(fields, columns, "threads", 1);
     summary.num_queries = ParseUint32Field("queries", RequiredTsvField(fields, columns, "queries"));
     summary.elapsed_ms = ParseDoubleField("elapsed_ms", RequiredTsvField(fields, columns, "elapsed_ms"));
     summary.average_latency_ms =
         ParseDoubleField("average_latency_ms", RequiredTsvField(fields, columns, "average_latency_ms"));
+    summary.mean_latency_us =
+        ParseOptionalDoubleColumn(fields, columns, "mean_latency_us", summary.average_latency_ms * 1000.0);
+    summary.p95_latency_us =
+        ParseOptionalDoubleColumn(fields, columns, "p95_latency_us", summary.mean_latency_us);
+    summary.p99_latency_us =
+        ParseOptionalDoubleColumn(fields, columns, "p99_latency_us", summary.p95_latency_us);
     summary.qps = ParseDoubleField("qps", RequiredTsvField(fields, columns, "qps"));
     summary.aggregate_stats.async_reads =
         ParseUint64Field("async_reads", RequiredTsvField(fields, columns, "async_reads"));
@@ -1283,6 +1421,9 @@ BenchComparisonSummary CompareBenchSummaries(const std::string &baseline_label,
     row.candidate = candidate_summary;
     row.delta_elapsed_ms = candidate_summary.elapsed_ms - row.baseline.elapsed_ms;
     row.delta_average_latency_ms = candidate_summary.average_latency_ms - row.baseline.average_latency_ms;
+    row.delta_mean_latency_us = candidate_summary.mean_latency_us - row.baseline.mean_latency_us;
+    row.delta_p95_latency_us = candidate_summary.p95_latency_us - row.baseline.p95_latency_us;
+    row.delta_p99_latency_us = candidate_summary.p99_latency_us - row.baseline.p99_latency_us;
     row.delta_qps = candidate_summary.qps - row.baseline.qps;
     const double baseline_recall = row.baseline.has_recall ? row.baseline.average_recall : 0.0;
     const double candidate_recall = candidate_summary.has_recall ? candidate_summary.average_recall : 0.0;
@@ -1389,11 +1530,12 @@ void ExportBenchComparisonMarkdown(const std::string &path, const BenchCompariso
   out << "- Baseline: `" << summary.baseline_label << "`\n";
   out << "- Candidate: `" << summary.candidate_label << "`\n";
   out << "- Matched runs: " << summary.rows.size() << "\n\n";
-  out << "| approx_kind | beam_width | l_search | graph_cache_budget_bytes | graph_cache_policy | refine_k | refine_ratio | defer_exact | scheduler_policy | scheduler_limit | dynamic_beam | baseline_qps | candidate_qps | delta_qps | baseline_recall | candidate_recall | delta_recall | baseline_latency_ms | candidate_latency_ms | delta_latency_ms |\n";
-  out << "| --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |\n";
+  out << "| approx_kind | threads | beam_width | l_search | graph_cache_budget_bytes | graph_cache_policy | refine_k | refine_ratio | defer_exact | scheduler_policy | scheduler_limit | dynamic_beam | baseline_qps | candidate_qps | delta_qps | baseline_recall | candidate_recall | delta_recall | baseline_latency_ms | candidate_latency_ms | delta_latency_ms | baseline_p99_us | candidate_p99_us | delta_p99_us |\n";
+  out << "| --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |\n";
   out << std::fixed << std::setprecision(6);
   for (const auto &row : summary.rows) {
     out << "| " << ApproxKindName(row.candidate.approx_kind)
+        << " | " << row.candidate.num_threads
         << " | " << row.candidate.search_config.beam_width
         << " | " << row.candidate.search_config.l_search
         << " | " << row.candidate.search_config.graph_cache_budget_bytes
@@ -1413,6 +1555,9 @@ void ExportBenchComparisonMarkdown(const std::string &path, const BenchCompariso
         << " | " << row.baseline.average_latency_ms
         << " | " << row.candidate.average_latency_ms
         << " | " << row.delta_average_latency_ms
+        << " | " << row.baseline.p99_latency_us
+        << " | " << row.candidate.p99_latency_us
+        << " | " << row.delta_p99_latency_us
         << " |\n";
   }
 }
@@ -1429,9 +1574,12 @@ void ExportBenchComparisonTsv(const std::string &path, const BenchComparisonSumm
 
   out << "baseline_label\tcandidate_label\tapprox_kind\ttop_k\tbeam_width\tl_search\tgraph_cache_budget_bytes"
          "\tgraph_cache_policy\trefine_k\trefine_ratio\tdefer_exact_until_refinement"
-         "\tscheduler_policy\tscheduler_policy_limit\tdynamic_beam_policy\tqueries"
+         "\tscheduler_policy\tscheduler_policy_limit\tdynamic_beam_policy\tthreads\tqueries"
          "\tbaseline_qps\tcandidate_qps\tdelta_qps"
          "\tbaseline_average_latency_ms\tcandidate_average_latency_ms\tdelta_average_latency_ms"
+         "\tbaseline_mean_latency_us\tcandidate_mean_latency_us\tdelta_mean_latency_us"
+         "\tbaseline_p95_latency_us\tcandidate_p95_latency_us\tdelta_p95_latency_us"
+         "\tbaseline_p99_latency_us\tcandidate_p99_latency_us\tdelta_p99_latency_us"
          "\tbaseline_average_recall\tcandidate_average_recall\tdelta_average_recall"
          "\tdelta_async_reads\tdelta_pages_completed\tdelta_resident_expansions\tdelta_approx_evals\tdelta_exact_evals"
          "\tdelta_bytes_read\tdelta_page_resident_hits\tdelta_graph_replicated_hits"
@@ -1462,6 +1610,7 @@ void ExportBenchComparisonTsv(const std::string &path, const BenchComparisonSumm
         << SchedulerPolicyName(row.candidate.search_config.scheduler_policy) << '\t'
         << row.candidate.search_config.scheduler_policy_limit << '\t'
         << DynamicBeamPolicyName(row.candidate.search_config.dynamic_beam_policy) << '\t'
+        << row.candidate.num_threads << '\t'
         << row.candidate.num_queries << '\t'
         << row.baseline.qps << '\t'
         << row.candidate.qps << '\t'
@@ -1469,6 +1618,15 @@ void ExportBenchComparisonTsv(const std::string &path, const BenchComparisonSumm
         << row.baseline.average_latency_ms << '\t'
         << row.candidate.average_latency_ms << '\t'
         << row.delta_average_latency_ms << '\t'
+        << row.baseline.mean_latency_us << '\t'
+        << row.candidate.mean_latency_us << '\t'
+        << row.delta_mean_latency_us << '\t'
+        << row.baseline.p95_latency_us << '\t'
+        << row.candidate.p95_latency_us << '\t'
+        << row.delta_p95_latency_us << '\t'
+        << row.baseline.p99_latency_us << '\t'
+        << row.candidate.p99_latency_us << '\t'
+        << row.delta_p99_latency_us << '\t'
         << (row.baseline.has_recall ? row.baseline.average_recall : -1.0) << '\t'
         << (row.candidate.has_recall ? row.candidate.average_recall : -1.0) << '\t'
         << row.delta_average_recall << '\t'

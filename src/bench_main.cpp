@@ -22,6 +22,8 @@ void PrintUsage() {
       << "  --beam_widths v1,v2,...\n"
       << "  --l_search N\n"
       << "  --l_search_values v1,v2,...\n"
+      << "  --threads N\n"
+      << "  --thread_counts v1,v2,...\n"
       << "  --mem_l N\n"
       << "  --graph_cache_bytes N\n"
       << "  --graph_cache_bytes_values v1,v2,...\n"
@@ -159,6 +161,14 @@ ParsedBenchArgs ParseArgs(int argc, char **argv) {
     }
     if (arg == "--l_search_values") {
       parsed.sweep_config.l_search_values = hybrid::ParseUint32List(need_value("--l_search_values"));
+      continue;
+    }
+    if (arg == "--threads") {
+      config.num_threads = ParseUint32("--threads", need_value("--threads"));
+      continue;
+    }
+    if (arg == "--thread_counts") {
+      parsed.sweep_config.thread_counts = hybrid::ParseUint32List(need_value("--thread_counts"));
       continue;
     }
     if (arg == "--mem_l") {
@@ -351,9 +361,13 @@ int main(int argc, char **argv) {
                 << " scheduler_policy=" << hybrid::SchedulerPolicyName(summary.search_config.scheduler_policy)
                 << " scheduler_policy_limit=" << summary.search_config.scheduler_policy_limit
                 << " dynamic_beam_policy=" << hybrid::DynamicBeamPolicyName(summary.search_config.dynamic_beam_policy)
+                << " threads=" << summary.num_threads
                 << " queries=" << summary.num_queries
                 << " elapsed_ms=" << summary.elapsed_ms
                 << " avg_latency_ms=" << summary.average_latency_ms
+                << " mean_latency_us=" << summary.mean_latency_us
+                << " p95_latency_us=" << summary.p95_latency_us
+                << " p99_latency_us=" << summary.p99_latency_us
                 << " qps=" << summary.qps;
       if (summary.has_recall) {
         std::cout << " average_recall=" << summary.average_recall;

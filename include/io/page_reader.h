@@ -37,8 +37,14 @@ class IPageReader {
 };
 
 std::unique_ptr<IPageReader> CreatePageReader(const IndexReader &index, PageReaderBackend backend);
-std::unique_ptr<IPageReader> CreateBestEffortPageReader(const IndexReader &index);
+// Best-effort keeps the simple async pread path. The Linux AIO backend is
+// available explicitly, but it needs page buffers that satisfy O_DIRECT
+// alignment requirements.
+std::unique_ptr<IPageReader> CreateBestEffortPageReader(const IndexReader &index,
+                                                        uint32_t expected_concurrent_threads = 1);
 std::unique_ptr<IPageReader> CreateAsyncPreadPageReader(const IndexReader &index);
 std::unique_ptr<IPageReader> CreateLinuxAioPageReader(const IndexReader &index);
+std::unique_ptr<IPageReader> CreateThreadLocalPageReader(const IndexReader &index,
+                                                         PageReaderBackend backend);
 
 }  // namespace hybrid

@@ -157,6 +157,9 @@ int main() {
   assert(full_bench_summary.num_queries == 3);
   assert(!full_bench_summary.first_query_results.empty());
   assert(full_bench_summary.approx_backend_name == "full_precision");
+  assert(full_bench_summary.mean_latency_us > 0.0);
+  assert(full_bench_summary.p95_latency_us > 0.0);
+  assert(full_bench_summary.p99_latency_us > 0.0);
   assert(full_bench_summary.has_recall);
   assert(full_bench_summary.average_recall >= 0.0);
   assert(full_bench_summary.average_recall <= 1.0);
@@ -165,8 +168,12 @@ int main() {
   pq_bench_config.approx_kind = hybrid::ApproxDistanceKind::kProductQuantization;
   const hybrid::BenchToolSummary pq_bench_summary = hybrid::RunBenchTool(pq_bench_config);
   assert(pq_bench_summary.num_queries == 3);
+  assert(pq_bench_summary.num_threads == 1);
   assert(!pq_bench_summary.first_query_results.empty());
   assert(pq_bench_summary.approx_backend_name == "pipeann_pq");
+  assert(pq_bench_summary.mean_latency_us > 0.0);
+  assert(pq_bench_summary.p95_latency_us > 0.0);
+  assert(pq_bench_summary.p99_latency_us > 0.0);
   assert(pq_bench_summary.aggregate_stats.bytes_read > 0);
   assert(pq_bench_summary.aggregate_stats.page_resident_hits ==
          pq_bench_summary.aggregate_stats.resident_expansions);
@@ -177,6 +184,17 @@ int main() {
   assert(pq_bench_summary.has_recall);
   assert(pq_bench_summary.average_recall >= 0.0);
   assert(pq_bench_summary.average_recall <= 1.0);
+
+  hybrid::BenchToolConfig threaded_bench_config = pq_bench_config;
+  threaded_bench_config.num_threads = 2;
+  const hybrid::BenchToolSummary threaded_bench_summary = hybrid::RunBenchTool(threaded_bench_config);
+  assert(threaded_bench_summary.num_queries == 3);
+  assert(threaded_bench_summary.num_threads == 2);
+  assert(!threaded_bench_summary.first_query_results.empty());
+  assert(threaded_bench_summary.mean_latency_us > 0.0);
+  assert(threaded_bench_summary.p95_latency_us > 0.0);
+  assert(threaded_bench_summary.p99_latency_us > 0.0);
+  assert(threaded_bench_summary.has_recall);
 
   const std::vector<std::vector<float>> file_queries = {
       {1.0f, 2.0f, 3.0f},
@@ -315,6 +333,7 @@ int main() {
   assert(export_text.find("graph_cache_hits") != std::string::npos);
   assert(export_text.find("graph_cache_budget_bytes") != std::string::npos);
   assert(export_text.find("graph_cache_policy") != std::string::npos);
+  assert(export_text.find("p99_latency_us") != std::string::npos);
   assert(export_text.find("refine_k") != std::string::npos);
   assert(export_text.find("defer_exact_until_refinement") != std::string::npos);
   assert(export_text.find("deferred_exact_candidates") != std::string::npos);
@@ -342,6 +361,7 @@ int main() {
   assert(manifest_text.find("scheduler_policies=conservative,bounded") != std::string::npos);
   assert(manifest_text.find("scheduler_policy_limit_values=0") != std::string::npos);
   assert(manifest_text.find("dynamic_beam_policies=adaptive") != std::string::npos);
+  assert(manifest_text.find("thread_counts=1") != std::string::npos);
   assert(manifest_text.find("pipeann_base_data=") != std::string::npos);
   assert(manifest_text.find("full_data=") != std::string::npos);
   assert(manifest_text.find("pipeann_pq_pivots=") != std::string::npos);
@@ -373,6 +393,7 @@ int main() {
       hybrid::LoadBenchSummariesTsv(second_experiment_dir.string());
   assert(loaded_baseline.size() == sweep_summary.runs.size());
   assert(loaded_candidate.size() == sweep_summary.runs.size());
+  assert(loaded_baseline.front().p99_latency_us > 0.0);
   const hybrid::BenchComparisonSummary comparison =
       hybrid::CompareBenchSummaries("baseline", loaded_baseline, "candidate", loaded_candidate);
   assert(!comparison.rows.empty());
@@ -387,6 +408,7 @@ int main() {
   const std::string markdown_text = markdown_buffer.str();
   assert(markdown_text.find("# Bench Comparison") != std::string::npos);
   assert(markdown_text.find("baseline_qps") != std::string::npos);
+  assert(markdown_text.find("baseline_p99_us") != std::string::npos);
 
   const std::filesystem::path comparison_tsv = out_dir / "comparison.tsv";
   hybrid::ExportBenchComparisonTsv(comparison_tsv.string(), comparison);
@@ -397,6 +419,7 @@ int main() {
   comparison_tsv_buffer << comparison_tsv_in.rdbuf();
   const std::string comparison_tsv_text = comparison_tsv_buffer.str();
   assert(comparison_tsv_text.find("delta_qps") != std::string::npos);
+  assert(comparison_tsv_text.find("delta_p99_latency_us") != std::string::npos);
   assert(comparison_tsv_text.find("delta_bytes_read") != std::string::npos);
   assert(comparison_tsv_text.find("delta_graph_cache_hits") != std::string::npos);
   assert(comparison_tsv_text.find("delta_deferred_exact_candidates") != std::string::npos);

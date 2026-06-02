@@ -393,6 +393,38 @@ std::vector<SearchResult> PipelinedGraphReplicatedSearcher::Search(const std::ve
 std::vector<SearchResult> PipelinedGraphReplicatedSearcher::Search(const std::vector<float> &query,
                                                                    const SearchConfig &config,
                                                                    ApproxDistanceKind approx_kind,
+                                                                   std::unique_ptr<IPageReader> page_reader,
+                                                                   const GraphAdjacencyCache *graph_cache,
+                                                                   const PipeannProductQuantization *shared_pq,
+                                                                   SearchStats *stats,
+                                                                   const std::string &pq_codebook_path,
+                                                                   const std::string &pq_codes_path) const {
+  ValidateSearchInputs(index_, query, config);
+  if (page_reader == nullptr) {
+    throw std::runtime_error("search requires a page reader");
+  }
+
+  SearchSession session(index_,
+                        query,
+                        config,
+                        stats,
+                        std::move(page_reader),
+                        approx_kind,
+                        EffectiveLPool(config),
+                        false,
+                        false,
+                        {},
+                        {},
+                        pq_codebook_path,
+                        pq_codes_path,
+                        graph_cache,
+                        shared_pq);
+  return session.Run();
+}
+
+std::vector<SearchResult> PipelinedGraphReplicatedSearcher::Search(const std::vector<float> &query,
+                                                                   const SearchConfig &config,
+                                                                   ApproxDistanceKind approx_kind,
                                                                    SearchStats *stats,
                                                                    const std::string &pq_codebook_path,
                                                                    const std::string &pq_codes_path) const {

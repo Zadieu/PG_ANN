@@ -44,13 +44,18 @@ struct BenchToolConfig {
   SearchConfig search_config{};
   ApproxDistanceKind approx_kind = ApproxDistanceKind::kProductQuantization;
   uint32_t recall_at_k = 0;
+  uint32_t num_threads = 1;
 };
 
 struct BenchToolSummary {
   std::string approx_backend_name;
   uint32_t num_queries = 0;
+  uint32_t num_threads = 1;
   double elapsed_ms = 0.0;
   double average_latency_ms = 0.0;
+  double mean_latency_us = 0.0;
+  double p95_latency_us = 0.0;
+  double p99_latency_us = 0.0;
   double qps = 0.0;
   SearchStats aggregate_stats{};
   std::vector<SearchResult> first_query_results;
@@ -73,6 +78,7 @@ struct BenchSweepConfig {
   std::vector<uint32_t> scheduler_policy_limit_values;
   std::vector<SearchConfig::DynamicBeamPolicy> dynamic_beam_policies;
   std::vector<ApproxDistanceKind> approx_kinds;
+  std::vector<uint32_t> thread_counts;
 };
 
 struct BenchSweepSummary {
@@ -84,6 +90,9 @@ struct BenchComparisonRow {
   BenchToolSummary candidate;
   double delta_elapsed_ms = 0.0;
   double delta_average_latency_ms = 0.0;
+  double delta_mean_latency_us = 0.0;
+  double delta_p95_latency_us = 0.0;
+  double delta_p99_latency_us = 0.0;
   double delta_qps = 0.0;
   double delta_average_recall = 0.0;
   int64_t delta_async_reads = 0;

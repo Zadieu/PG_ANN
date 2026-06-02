@@ -34,7 +34,8 @@ class SearchSession {
                 std::function<bool(uint32_t, const DiskNodeView &)> is_member = {},
                 const std::string &pq_codebook_path = {},
                 const std::string &pq_codes_path = {},
-                const GraphAdjacencyCache *graph_cache = nullptr);
+                const GraphAdjacencyCache *graph_cache = nullptr,
+                const PipeannProductQuantization *shared_pq = nullptr);
   SearchSession(const IndexReader &index,
                 const std::vector<float> &query,
                 const SearchConfig &config,
@@ -149,6 +150,7 @@ class SearchSession {
   SearchStats *stats_ = nullptr;
   std::unique_ptr<IPageReader> page_reader_;
   const GraphAdjacencyCache *graph_cache_ = nullptr;
+  const PipeannProductQuantization *shared_pq_ = nullptr;
   ApproxExecutionMode approx_mode_ = ApproxExecutionMode::kPipeannPq;
   FullPrecisionDistanceComputer full_precision_distance_;
   PipeannProductQuantization pipeann_pq_;

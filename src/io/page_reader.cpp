@@ -190,10 +190,9 @@ std::unique_ptr<IPageReader> CreatePageReader(const IndexReader &index, PageRead
   throw std::runtime_error("unsupported page reader backend");
 }
 
-std::unique_ptr<IPageReader> CreateBestEffortPageReader(const IndexReader &index) {
-  // The LinuxAio path is still available for explicit selection, but the
-  // default search path should favor the more reliable backend so tests and
-  // CLI runs do not stall on environment-specific AIO behavior.
+std::unique_ptr<IPageReader> CreateBestEffortPageReader(const IndexReader &index,
+                                                        uint32_t expected_concurrent_threads) {
+  (void) expected_concurrent_threads;
   return CreateAsyncPreadPageReader(index);
 }
 
@@ -203,6 +202,20 @@ std::unique_ptr<IPageReader> CreateAsyncPreadPageReader(const IndexReader &index
 
 std::unique_ptr<IPageReader> CreateLinuxAioPageReader(const IndexReader &index) {
   return std::make_unique<PipeannLinuxPageReader>(index);
+}
+
+std::unique_ptr<IPageReader> CreateThreadLocalPageReader(const IndexReader &index,
+                                                         PageReaderBackend backend) {
+  switch (backend) {
+    case PageReaderBackend::kBestEffort:
+      return CreateBestEffortPageReader(index, 2);
+    case PageReaderBackend::kLinuxAio:
+      return CreateLinuxAioPageReader(index);
+    case PageReaderBackend::kAsyncPread:
+      throw std::runtime_error(
+          "AsyncPreadPageReader is not supported for multi-threaded search contexts; use LinuxAio or BestEffort");
+  }
+  throw std::runtime_error("unsupported thread-local page reader backend");
 }
 
 }  // namespace hybrid

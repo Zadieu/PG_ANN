@@ -22,6 +22,7 @@ namespace {
 #if defined(HYBRID_INTEGRATION_HAS_LIBAIO)
 constexpr uint64_t kMaxEvents = 256;
 thread_local io_context_t g_io_ctx = nullptr;
+thread_local uint32_t g_io_ctx_refcount = 0;
 
 void ExecuteIo(void *ctx, int fd, std::vector<IORequest> &requests) {
   const uint64_t n_iters = (requests.size() + kMaxEvents - 1) / kMaxEvents;
@@ -72,7 +73,7 @@ LinuxAlignedFileReader::~LinuxAlignedFileReader() {
 
 void *LinuxAlignedFileReader::GetContext() {
 #if defined(HYBRID_INTEGRATION_HAS_LIBAIO)
-  if (g_io_ctx == nullptr) {
+  if (!thread_registered_) {
     RegisterThread();
   }
   return static_cast<void *>(g_io_ctx);
@@ -83,17 +84,30 @@ void *LinuxAlignedFileReader::GetContext() {
 
 void LinuxAlignedFileReader::RegisterThread() {
 #if defined(HYBRID_INTEGRATION_HAS_LIBAIO)
+  if (thread_registered_) {
+    return;
+  }
   if (g_io_ctx == nullptr) {
     if (io_setup(static_cast<unsigned>(kMaxEvents), &g_io_ctx) != 0) {
       throw std::runtime_error("io_setup failed in LinuxAlignedFileReader");
     }
   }
+  ++g_io_ctx_refcount;
+  thread_registered_ = true;
 #endif
 }
 
 void LinuxAlignedFileReader::DeregisterThread() {
 #if defined(HYBRID_INTEGRATION_HAS_LIBAIO)
-  if (g_io_ctx != nullptr) {
+  if (!thread_registered_) {
+    return;
+  }
+  thread_registered_ = false;
+  if (g_io_ctx_refcount == 0) {
+    throw std::runtime_error("LinuxAlignedFileReader thread context refcount underflow");
+  }
+  --g_io_ctx_refcount;
+  if (g_io_ctx != nullptr && g_io_ctx_refcount == 0) {
     io_destroy(g_io_ctx);
     g_io_ctx = nullptr;
   }
