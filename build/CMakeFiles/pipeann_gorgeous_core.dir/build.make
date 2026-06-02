@@ -114,10 +114,38 @@ CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/linux_aligned_file_reader.
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/linux_aligned_file_reader.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/adieu/OS/project/src/integrations/linux_aligned_file_reader.cpp -o CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/linux_aligned_file_reader.cpp.s
 
+CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_layout_activate.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/flags.make
+CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_layout_activate.cpp.o: /home/adieu/OS/project/src/integrations/pipeann_layout_activate.cpp
+CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_layout_activate.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/adieu/OS/project/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_layout_activate.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_layout_activate.cpp.o -MF CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_layout_activate.cpp.o.d -o CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_layout_activate.cpp.o -c /home/adieu/OS/project/src/integrations/pipeann_layout_activate.cpp
+
+CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_layout_activate.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_layout_activate.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/adieu/OS/project/src/integrations/pipeann_layout_activate.cpp > CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_layout_activate.cpp.i
+
+CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_layout_activate.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_layout_activate.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/adieu/OS/project/src/integrations/pipeann_layout_activate.cpp -o CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_layout_activate.cpp.s
+
+CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_bench.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/flags.make
+CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_bench.cpp.o: /home/adieu/OS/project/src/integrations/pipeann_parity_bench.cpp
+CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_bench.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/adieu/OS/project/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_bench.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_bench.cpp.o -MF CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_bench.cpp.o.d -o CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_bench.cpp.o -c /home/adieu/OS/project/src/integrations/pipeann_parity_bench.cpp
+
+CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_bench.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_bench.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/adieu/OS/project/src/integrations/pipeann_parity_bench.cpp > CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_bench.cpp.i
+
+CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_bench.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_bench.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/adieu/OS/project/src/integrations/pipeann_parity_bench.cpp -o CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_bench.cpp.s
+
 CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_builder.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/flags.make
 CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_builder.cpp.o: /home/adieu/OS/project/src/integrations/pipeann_builder.cpp
 CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_builder.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/adieu/OS/project/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_builder.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/adieu/OS/project/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_builder.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_builder.cpp.o -MF CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_builder.cpp.o.d -o CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_builder.cpp.o -c /home/adieu/OS/project/src/integrations/pipeann_builder.cpp
 
 CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_builder.cpp.i: cmake_force
@@ -128,80 +156,38 @@ CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_builder.cpp.s: cma
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_builder.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/adieu/OS/project/src/integrations/pipeann_builder.cpp -o CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_builder.cpp.s
 
-CMakeFiles/pipeann_gorgeous_core.dir/src/gorgeous_layout.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/flags.make
-CMakeFiles/pipeann_gorgeous_core.dir/src/gorgeous_layout.cpp.o: /home/adieu/OS/project/src/gorgeous_layout.cpp
-CMakeFiles/pipeann_gorgeous_core.dir/src/gorgeous_layout.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/adieu/OS/project/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/pipeann_gorgeous_core.dir/src/gorgeous_layout.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/pipeann_gorgeous_core.dir/src/gorgeous_layout.cpp.o -MF CMakeFiles/pipeann_gorgeous_core.dir/src/gorgeous_layout.cpp.o.d -o CMakeFiles/pipeann_gorgeous_core.dir/src/gorgeous_layout.cpp.o -c /home/adieu/OS/project/src/gorgeous_layout.cpp
+CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_index.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/flags.make
+CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_index.cpp.o: /home/adieu/OS/project/src/integrations/pipeann_parity_index.cpp
+CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_index.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/adieu/OS/project/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_index.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_index.cpp.o -MF CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_index.cpp.o.d -o CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_index.cpp.o -c /home/adieu/OS/project/src/integrations/pipeann_parity_index.cpp
 
-CMakeFiles/pipeann_gorgeous_core.dir/src/gorgeous_layout.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/pipeann_gorgeous_core.dir/src/gorgeous_layout.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/adieu/OS/project/src/gorgeous_layout.cpp > CMakeFiles/pipeann_gorgeous_core.dir/src/gorgeous_layout.cpp.i
+CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_index.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_index.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/adieu/OS/project/src/integrations/pipeann_parity_index.cpp > CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_index.cpp.i
 
-CMakeFiles/pipeann_gorgeous_core.dir/src/gorgeous_layout.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/pipeann_gorgeous_core.dir/src/gorgeous_layout.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/adieu/OS/project/src/gorgeous_layout.cpp -o CMakeFiles/pipeann_gorgeous_core.dir/src/gorgeous_layout.cpp.s
+CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_index.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_index.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/adieu/OS/project/src/integrations/pipeann_parity_index.cpp -o CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_index.cpp.s
 
-CMakeFiles/pipeann_gorgeous_core.dir/src/io/page_reader.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/flags.make
-CMakeFiles/pipeann_gorgeous_core.dir/src/io/page_reader.cpp.o: /home/adieu/OS/project/src/io/page_reader.cpp
-CMakeFiles/pipeann_gorgeous_core.dir/src/io/page_reader.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/adieu/OS/project/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/pipeann_gorgeous_core.dir/src/io/page_reader.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/pipeann_gorgeous_core.dir/src/io/page_reader.cpp.o -MF CMakeFiles/pipeann_gorgeous_core.dir/src/io/page_reader.cpp.o.d -o CMakeFiles/pipeann_gorgeous_core.dir/src/io/page_reader.cpp.o -c /home/adieu/OS/project/src/io/page_reader.cpp
+CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_searcher.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/flags.make
+CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_searcher.cpp.o: /home/adieu/OS/project/src/integrations/pipeann_parity_searcher.cpp
+CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_searcher.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/adieu/OS/project/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_searcher.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_searcher.cpp.o -MF CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_searcher.cpp.o.d -o CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_searcher.cpp.o -c /home/adieu/OS/project/src/integrations/pipeann_parity_searcher.cpp
 
-CMakeFiles/pipeann_gorgeous_core.dir/src/io/page_reader.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/pipeann_gorgeous_core.dir/src/io/page_reader.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/adieu/OS/project/src/io/page_reader.cpp > CMakeFiles/pipeann_gorgeous_core.dir/src/io/page_reader.cpp.i
+CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_searcher.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_searcher.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/adieu/OS/project/src/integrations/pipeann_parity_searcher.cpp > CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_searcher.cpp.i
 
-CMakeFiles/pipeann_gorgeous_core.dir/src/io/page_reader.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/pipeann_gorgeous_core.dir/src/io/page_reader.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/adieu/OS/project/src/io/page_reader.cpp -o CMakeFiles/pipeann_gorgeous_core.dir/src/io/page_reader.cpp.s
-
-CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/flags.make
-CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.o: /home/adieu/OS/project/src/pipeline_search.cpp
-CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/adieu/OS/project/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.o -MF CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.o.d -o CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.o -c /home/adieu/OS/project/src/pipeline_search.cpp
-
-CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/adieu/OS/project/src/pipeline_search.cpp > CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.i
-
-CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/adieu/OS/project/src/pipeline_search.cpp -o CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.s
-
-CMakeFiles/pipeann_gorgeous_core.dir/src/quant/approx_distance.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/flags.make
-CMakeFiles/pipeann_gorgeous_core.dir/src/quant/approx_distance.cpp.o: /home/adieu/OS/project/src/quant/approx_distance.cpp
-CMakeFiles/pipeann_gorgeous_core.dir/src/quant/approx_distance.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/adieu/OS/project/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/pipeann_gorgeous_core.dir/src/quant/approx_distance.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/pipeann_gorgeous_core.dir/src/quant/approx_distance.cpp.o -MF CMakeFiles/pipeann_gorgeous_core.dir/src/quant/approx_distance.cpp.o.d -o CMakeFiles/pipeann_gorgeous_core.dir/src/quant/approx_distance.cpp.o -c /home/adieu/OS/project/src/quant/approx_distance.cpp
-
-CMakeFiles/pipeann_gorgeous_core.dir/src/quant/approx_distance.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/pipeann_gorgeous_core.dir/src/quant/approx_distance.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/adieu/OS/project/src/quant/approx_distance.cpp > CMakeFiles/pipeann_gorgeous_core.dir/src/quant/approx_distance.cpp.i
-
-CMakeFiles/pipeann_gorgeous_core.dir/src/quant/approx_distance.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/pipeann_gorgeous_core.dir/src/quant/approx_distance.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/adieu/OS/project/src/quant/approx_distance.cpp -o CMakeFiles/pipeann_gorgeous_core.dir/src/quant/approx_distance.cpp.s
-
-CMakeFiles/pipeann_gorgeous_core.dir/src/search/candidate_pool.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/flags.make
-CMakeFiles/pipeann_gorgeous_core.dir/src/search/candidate_pool.cpp.o: /home/adieu/OS/project/src/search/candidate_pool.cpp
-CMakeFiles/pipeann_gorgeous_core.dir/src/search/candidate_pool.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/adieu/OS/project/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/pipeann_gorgeous_core.dir/src/search/candidate_pool.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/pipeann_gorgeous_core.dir/src/search/candidate_pool.cpp.o -MF CMakeFiles/pipeann_gorgeous_core.dir/src/search/candidate_pool.cpp.o.d -o CMakeFiles/pipeann_gorgeous_core.dir/src/search/candidate_pool.cpp.o -c /home/adieu/OS/project/src/search/candidate_pool.cpp
-
-CMakeFiles/pipeann_gorgeous_core.dir/src/search/candidate_pool.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/pipeann_gorgeous_core.dir/src/search/candidate_pool.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/adieu/OS/project/src/search/candidate_pool.cpp > CMakeFiles/pipeann_gorgeous_core.dir/src/search/candidate_pool.cpp.i
-
-CMakeFiles/pipeann_gorgeous_core.dir/src/search/candidate_pool.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/pipeann_gorgeous_core.dir/src/search/candidate_pool.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/adieu/OS/project/src/search/candidate_pool.cpp -o CMakeFiles/pipeann_gorgeous_core.dir/src/search/candidate_pool.cpp.s
+CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_searcher.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_searcher.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/adieu/OS/project/src/integrations/pipeann_parity_searcher.cpp -o CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_searcher.cpp.s
 
 CMakeFiles/pipeann_gorgeous_core.dir/src/tools/build_pipeline.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/flags.make
 CMakeFiles/pipeann_gorgeous_core.dir/src/tools/build_pipeline.cpp.o: /home/adieu/OS/project/src/tools/build_pipeline.cpp
 CMakeFiles/pipeann_gorgeous_core.dir/src/tools/build_pipeline.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/adieu/OS/project/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object CMakeFiles/pipeann_gorgeous_core.dir/src/tools/build_pipeline.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/adieu/OS/project/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/pipeann_gorgeous_core.dir/src/tools/build_pipeline.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/pipeann_gorgeous_core.dir/src/tools/build_pipeline.cpp.o -MF CMakeFiles/pipeann_gorgeous_core.dir/src/tools/build_pipeline.cpp.o.d -o CMakeFiles/pipeann_gorgeous_core.dir/src/tools/build_pipeline.cpp.o -c /home/adieu/OS/project/src/tools/build_pipeline.cpp
 
 CMakeFiles/pipeann_gorgeous_core.dir/src/tools/build_pipeline.cpp.i: cmake_force
@@ -215,7 +201,7 @@ CMakeFiles/pipeann_gorgeous_core.dir/src/tools/build_pipeline.cpp.s: cmake_force
 CMakeFiles/pipeann_gorgeous_core.dir/src/tools/tool_cli.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/flags.make
 CMakeFiles/pipeann_gorgeous_core.dir/src/tools/tool_cli.cpp.o: /home/adieu/OS/project/src/tools/tool_cli.cpp
 CMakeFiles/pipeann_gorgeous_core.dir/src/tools/tool_cli.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/adieu/OS/project/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building CXX object CMakeFiles/pipeann_gorgeous_core.dir/src/tools/tool_cli.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/adieu/OS/project/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object CMakeFiles/pipeann_gorgeous_core.dir/src/tools/tool_cli.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/pipeann_gorgeous_core.dir/src/tools/tool_cli.cpp.o -MF CMakeFiles/pipeann_gorgeous_core.dir/src/tools/tool_cli.cpp.o.d -o CMakeFiles/pipeann_gorgeous_core.dir/src/tools/tool_cli.cpp.o -c /home/adieu/OS/project/src/tools/tool_cli.cpp
 
 CMakeFiles/pipeann_gorgeous_core.dir/src/tools/tool_cli.cpp.i: cmake_force
@@ -226,34 +212,18 @@ CMakeFiles/pipeann_gorgeous_core.dir/src/tools/tool_cli.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/pipeann_gorgeous_core.dir/src/tools/tool_cli.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/adieu/OS/project/src/tools/tool_cli.cpp -o CMakeFiles/pipeann_gorgeous_core.dir/src/tools/tool_cli.cpp.s
 
-CMakeFiles/pipeann_gorgeous_core.dir/src/search/search_session.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/flags.make
-CMakeFiles/pipeann_gorgeous_core.dir/src/search/search_session.cpp.o: /home/adieu/OS/project/src/search/search_session.cpp
-CMakeFiles/pipeann_gorgeous_core.dir/src/search/search_session.cpp.o: CMakeFiles/pipeann_gorgeous_core.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/adieu/OS/project/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object CMakeFiles/pipeann_gorgeous_core.dir/src/search/search_session.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/pipeann_gorgeous_core.dir/src/search/search_session.cpp.o -MF CMakeFiles/pipeann_gorgeous_core.dir/src/search/search_session.cpp.o.d -o CMakeFiles/pipeann_gorgeous_core.dir/src/search/search_session.cpp.o -c /home/adieu/OS/project/src/search/search_session.cpp
-
-CMakeFiles/pipeann_gorgeous_core.dir/src/search/search_session.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/pipeann_gorgeous_core.dir/src/search/search_session.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/adieu/OS/project/src/search/search_session.cpp > CMakeFiles/pipeann_gorgeous_core.dir/src/search/search_session.cpp.i
-
-CMakeFiles/pipeann_gorgeous_core.dir/src/search/search_session.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/pipeann_gorgeous_core.dir/src/search/search_session.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/adieu/OS/project/src/search/search_session.cpp -o CMakeFiles/pipeann_gorgeous_core.dir/src/search/search_session.cpp.s
-
 # Object files for target pipeann_gorgeous_core
 pipeann_gorgeous_core_OBJECTS = \
 "CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/disk_index_relayout.cpp.o" \
 "CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/gorgeous_original.cpp.o" \
 "CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/linux_aligned_file_reader.cpp.o" \
+"CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_layout_activate.cpp.o" \
+"CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_bench.cpp.o" \
 "CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_builder.cpp.o" \
-"CMakeFiles/pipeann_gorgeous_core.dir/src/gorgeous_layout.cpp.o" \
-"CMakeFiles/pipeann_gorgeous_core.dir/src/io/page_reader.cpp.o" \
-"CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.o" \
-"CMakeFiles/pipeann_gorgeous_core.dir/src/quant/approx_distance.cpp.o" \
-"CMakeFiles/pipeann_gorgeous_core.dir/src/search/candidate_pool.cpp.o" \
+"CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_index.cpp.o" \
+"CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_searcher.cpp.o" \
 "CMakeFiles/pipeann_gorgeous_core.dir/src/tools/build_pipeline.cpp.o" \
-"CMakeFiles/pipeann_gorgeous_core.dir/src/tools/tool_cli.cpp.o" \
-"CMakeFiles/pipeann_gorgeous_core.dir/src/search/search_session.cpp.o"
+"CMakeFiles/pipeann_gorgeous_core.dir/src/tools/tool_cli.cpp.o"
 
 # External object files for target pipeann_gorgeous_core
 pipeann_gorgeous_core_EXTERNAL_OBJECTS =
@@ -261,18 +231,16 @@ pipeann_gorgeous_core_EXTERNAL_OBJECTS =
 libpipeann_gorgeous_core.a: CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/disk_index_relayout.cpp.o
 libpipeann_gorgeous_core.a: CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/gorgeous_original.cpp.o
 libpipeann_gorgeous_core.a: CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/linux_aligned_file_reader.cpp.o
+libpipeann_gorgeous_core.a: CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_layout_activate.cpp.o
+libpipeann_gorgeous_core.a: CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_bench.cpp.o
 libpipeann_gorgeous_core.a: CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_builder.cpp.o
-libpipeann_gorgeous_core.a: CMakeFiles/pipeann_gorgeous_core.dir/src/gorgeous_layout.cpp.o
-libpipeann_gorgeous_core.a: CMakeFiles/pipeann_gorgeous_core.dir/src/io/page_reader.cpp.o
-libpipeann_gorgeous_core.a: CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.o
-libpipeann_gorgeous_core.a: CMakeFiles/pipeann_gorgeous_core.dir/src/quant/approx_distance.cpp.o
-libpipeann_gorgeous_core.a: CMakeFiles/pipeann_gorgeous_core.dir/src/search/candidate_pool.cpp.o
+libpipeann_gorgeous_core.a: CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_index.cpp.o
+libpipeann_gorgeous_core.a: CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_searcher.cpp.o
 libpipeann_gorgeous_core.a: CMakeFiles/pipeann_gorgeous_core.dir/src/tools/build_pipeline.cpp.o
 libpipeann_gorgeous_core.a: CMakeFiles/pipeann_gorgeous_core.dir/src/tools/tool_cli.cpp.o
-libpipeann_gorgeous_core.a: CMakeFiles/pipeann_gorgeous_core.dir/src/search/search_session.cpp.o
 libpipeann_gorgeous_core.a: CMakeFiles/pipeann_gorgeous_core.dir/build.make
 libpipeann_gorgeous_core.a: CMakeFiles/pipeann_gorgeous_core.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/adieu/OS/project/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Linking CXX static library libpipeann_gorgeous_core.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/adieu/OS/project/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Linking CXX static library libpipeann_gorgeous_core.a"
 	$(CMAKE_COMMAND) -P CMakeFiles/pipeann_gorgeous_core.dir/cmake_clean_target.cmake
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/pipeann_gorgeous_core.dir/link.txt --verbose=$(VERBOSE)
 

@@ -19,6 +19,17 @@ namespace {
 
 constexpr size_t kFilterModeStatsCount = 4;
 
+template <typename Fn>
+std::vector<SearchResult> RunMeasuredSearch(SearchStats *stats, Fn &&fn) {
+  const auto start = std::chrono::steady_clock::now();
+  std::vector<SearchResult> results = fn();
+  if (stats != nullptr) {
+    stats->total_us =
+        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start).count();
+  }
+  return results;
+}
+
 uint32_t EffectiveLPool(const SearchConfig &config) {
   return config.l_pool == 0 ? config.l_search : config.l_pool;
 }
@@ -393,26 +404,54 @@ std::vector<SearchResult> PipelinedGraphReplicatedSearcher::Search(const std::ve
 std::vector<SearchResult> PipelinedGraphReplicatedSearcher::Search(const std::vector<float> &query,
                                                                    const SearchConfig &config,
                                                                    ApproxDistanceKind approx_kind,
+                                                                   IPageReader &page_reader,
+                                                                   const GraphAdjacencyCache *graph_cache,
+                                                                   const PipeannProductQuantization *shared_pq,
                                                                    SearchStats *stats,
+                                                                   QueryBufferState *query_buffer,
                                                                    const std::string &pq_codebook_path,
                                                                    const std::string &pq_codes_path) const {
   ValidateSearchInputs(index_, query, config);
+  return RunMeasuredSearch(stats, [&]() {
+    SearchSession session(index_,
+                          query,
+                          config,
+                          stats,
+                          page_reader,
+                          approx_kind,
+                          EffectiveLPool(config),
+                          false,
+                          false,
+                          {},
+                          {},
+                          pq_codebook_path,
+                          pq_codes_path,
+                          shared_pq,
+                          graph_cache,
+                          query_buffer);
+    return session.Run();
+  });
+}
 
-  SearchSession session(index_,
-                        query,
-                        config,
-                        stats,
-                        CreateBestEffortPageReader(index_),
-                        approx_kind,
-                        EffectiveLPool(config),
-                        false,
-                        false,
-                        {},
-                        {},
-                        pq_codebook_path,
-                        pq_codes_path,
-                        GraphCacheForConfig(config));
-  return session.Run();
+std::vector<SearchResult> PipelinedGraphReplicatedSearcher::Search(const std::vector<float> &query,
+                                                                   const SearchConfig &config,
+                                                                   ApproxDistanceKind approx_kind,
+                                                                   SearchStats *stats,
+                                                                   const std::string &pq_codebook_path,
+                                                                   const std::string &pq_codes_path) const {
+  return RunMeasuredSearch(stats, [&]() {
+    std::unique_ptr<IPageReader> page_reader = CreateBestEffortPageReader(index_);
+    return Search(query,
+                  config,
+                  approx_kind,
+                  *page_reader,
+                  GraphCacheForConfig(config),
+                  nullptr,
+                  stats,
+                  nullptr,
+                  pq_codebook_path,
+                  pq_codes_path);
+  });
 }
 
 std::vector<SearchResult> PipelinedGraphReplicatedSearcher::Search(
@@ -421,20 +460,21 @@ std::vector<SearchResult> PipelinedGraphReplicatedSearcher::Search(
     std::unique_ptr<IApproximateDistanceComputer> approx_distance,
     SearchStats *stats) const {
   ValidateSearchInputs(index_, query, config);
-
-  SearchSession session(index_,
-                        query,
-                        config,
-                        stats,
-                        CreateBestEffortPageReader(index_),
-                        std::move(approx_distance),
-                        EffectiveLPool(config),
-                        false,
-                        false,
-                        {},
-                        {},
-                        GraphCacheForConfig(config));
-  return session.Run();
+  return RunMeasuredSearch(stats, [&]() {
+    SearchSession session(index_,
+                          query,
+                          config,
+                          stats,
+                          CreateBestEffortPageReader(index_),
+                          std::move(approx_distance),
+                          EffectiveLPool(config),
+                          false,
+                          false,
+                          {},
+                          {},
+                          GraphCacheForConfig(config));
+    return session.Run();
+  });
 }
 
 std::vector<SearchResult> PipelinedGraphReplicatedSearcher::RangeSearch(const std::vector<float> &query,
@@ -452,23 +492,26 @@ std::vector<SearchResult> PipelinedGraphReplicatedSearcher::RangeSearch(const st
                                                                         const std::string &pq_codebook_path,
                                                                         const std::string &pq_codes_path) const {
   ValidateSearchInputs(index_, query, config);
-  SearchConfig range_config = config;
-  range_config.range_partial = range;
-  SearchSession session(index_,
-                        query,
-                        range_config,
-                        stats,
-                        CreateBestEffortPageReader(index_),
-                        approx_kind,
-                        EffectiveLPool(config),
-                        false,
-                        true,
-                        {},
-                        {},
-                        pq_codebook_path,
-                        pq_codes_path,
-                        GraphCacheForConfig(range_config));
-  return session.Run();
+  return RunMeasuredSearch(stats, [&]() {
+    SearchConfig range_config = config;
+    range_config.range_partial = range;
+    SearchSession session(index_,
+                          query,
+                          range_config,
+                          stats,
+                          CreateBestEffortPageReader(index_),
+                          approx_kind,
+                          EffectiveLPool(config),
+                          false,
+                          true,
+                          {},
+                          {},
+                          pq_codebook_path,
+                          pq_codes_path,
+                          nullptr,
+                          GraphCacheForConfig(range_config));
+    return session.Run();
+  });
 }
 
 std::vector<SearchResult> PipelinedGraphReplicatedSearcher::FilterSearch(const std::vector<float> &query,
@@ -485,75 +528,79 @@ std::vector<SearchResult> PipelinedGraphReplicatedSearcher::FilterSearch(const s
                                                                          SearchStats *stats,
                                                                          const std::string &pq_codebook_path,
                                                                          const std::string &pq_codes_path) const {
-  ValidateSearchInputs(index_, query, config);
-  if (filter.selector == nullptr || filter.query_attrs == nullptr) {
-    throw std::runtime_error("filter search requires both selector and query attributes");
-  }
-  ValidateFilterableIndex(index_);
-
-  LinuxAlignedFileReader io_reader;
-  io_reader.open(index_.index_path(), false, false);
-  std::unique_ptr<pipeann::Selector> selector(filter.selector->copy());
-  const pipeann::Attributes &query_attrs = *filter.query_attrs;
-  const FilterPlan plan = BuildFilterPlan(index_, selector.get(), query_attrs, config, filter);
-  RecordFilterPlan(stats, plan);
-  if (plan.selected_mode == FilterSearchMode::kPreFilter) {
-    if (stats != nullptr) {
-      stats->filter_reads[FilterModeIndex(FilterSearchMode::kPreFilter)] += selector->estimate_prefilter_reads(query_attrs);
+  return RunMeasuredSearch(stats, [&]() {
+    ValidateSearchInputs(index_, query, config);
+    if (filter.selector == nullptr || filter.query_attrs == nullptr) {
+      throw std::runtime_error("filter search requires both selector and query attributes");
     }
-    return RunPrefilterSearch(index_,
-                              query,
-                              config,
-                              selector.get(),
-                              query_attrs,
-                              approx_kind,
-                              pq_codebook_path,
-                              pq_codes_path,
-                              stats);
-  }
+    ValidateFilterableIndex(index_);
 
-  if (plan.selected_mode == FilterSearchMode::kInFilter) {
-    const auto io_start = std::chrono::steady_clock::now();
-    selector->prepare_in_filter(query_attrs, &io_reader);
-    if (stats != nullptr) {
-      const size_t mode_index = FilterModeIndex(FilterSearchMode::kInFilter);
-      stats->filter_reads[mode_index] += selector->estimate_infilter_reads(query_attrs);
-      stats->filter_io_us[mode_index] += std::chrono::duration_cast<std::chrono::microseconds>(
-                                             std::chrono::steady_clock::now() - io_start)
-                                             .count();
+    LinuxAlignedFileReader io_reader;
+    io_reader.open(index_.index_path(), false, false);
+    std::unique_ptr<pipeann::Selector> selector(filter.selector->copy());
+    const pipeann::Attributes &query_attrs = *filter.query_attrs;
+    const FilterPlan plan = BuildFilterPlan(index_, selector.get(), query_attrs, config, filter);
+    RecordFilterPlan(stats, plan);
+    if (plan.selected_mode == FilterSearchMode::kPreFilter) {
+      if (stats != nullptr) {
+        stats->filter_reads[FilterModeIndex(FilterSearchMode::kPreFilter)] +=
+            selector->estimate_prefilter_reads(query_attrs);
+      }
+      return RunPrefilterSearch(index_,
+                                query,
+                                config,
+                                selector.get(),
+                                query_attrs,
+                                approx_kind,
+                                pq_codebook_path,
+                                pq_codes_path,
+                                stats);
     }
-  }
-  const bool use_dense_neighbors = plan.selected_mode == FilterSearchMode::kInFilter;
-  const auto approx_member = [selector_ptr = selector.get(), &query_attrs, use_dense_neighbors](uint32_t id) {
-    return !use_dense_neighbors || selector_ptr->is_member_approx(id, query_attrs);
-  };
-  const auto verify_member = [selector_ptr = selector.get(), &query_attrs, stats, mode = plan.selected_mode](
-                                 uint32_t id, const DiskNodeView &node) {
-    const bool is_member = VerifyNodeMember(selector_ptr, query_attrs, id, node);
-    RecordFilterVectorAccess(stats, mode, is_member);
-    return is_member;
-  };
 
-  SearchSession session(index_,
-                        query,
-                        config,
-                        stats,
-                        CreateBestEffortPageReader(index_),
-                        approx_kind,
-                        plan.l_max,
-                        use_dense_neighbors,
-                        false,
-                        approx_member,
-                        verify_member,
-                        pq_codebook_path,
-                        pq_codes_path,
-                        GraphCacheForConfig(config));
-  std::vector<SearchResult> results = session.Run();
-  if (stats != nullptr &&
-      (plan.selected_mode == FilterSearchMode::kPostFilter || plan.selected_mode == FilterSearchMode::kInFilter)) {
-    stats->filter_reads[FilterModeIndex(plan.selected_mode)] += stats->n_ios;
-  }
-  return results;
+    if (plan.selected_mode == FilterSearchMode::kInFilter) {
+      const auto io_start = std::chrono::steady_clock::now();
+      selector->prepare_in_filter(query_attrs, &io_reader);
+      if (stats != nullptr) {
+        const size_t mode_index = FilterModeIndex(FilterSearchMode::kInFilter);
+        stats->filter_reads[mode_index] += selector->estimate_infilter_reads(query_attrs);
+        stats->filter_io_us[mode_index] += std::chrono::duration_cast<std::chrono::microseconds>(
+                                               std::chrono::steady_clock::now() - io_start)
+                                               .count();
+      }
+    }
+    const bool use_dense_neighbors = plan.selected_mode == FilterSearchMode::kInFilter;
+    const auto approx_member = [selector_ptr = selector.get(), &query_attrs, use_dense_neighbors](uint32_t id) {
+      return !use_dense_neighbors || selector_ptr->is_member_approx(id, query_attrs);
+    };
+    const auto verify_member = [selector_ptr = selector.get(), &query_attrs, stats, mode = plan.selected_mode](
+                                   uint32_t id, const DiskNodeView &node) {
+      const bool is_member = VerifyNodeMember(selector_ptr, query_attrs, id, node);
+      RecordFilterVectorAccess(stats, mode, is_member);
+      return is_member;
+    };
+
+    SearchSession session(index_,
+                          query,
+                          config,
+                          stats,
+                          CreateBestEffortPageReader(index_),
+                          approx_kind,
+                          plan.l_max,
+                          use_dense_neighbors,
+                          false,
+                          approx_member,
+                          verify_member,
+                          pq_codebook_path,
+                          pq_codes_path,
+                          nullptr,
+                          GraphCacheForConfig(config));
+    std::vector<SearchResult> results = session.Run();
+    if (stats != nullptr &&
+        (plan.selected_mode == FilterSearchMode::kPostFilter || plan.selected_mode == FilterSearchMode::kInFilter)) {
+      stats->filter_reads[FilterModeIndex(plan.selected_mode)] += stats->n_ios;
+    }
+    return results;
+  });
 }
 
 std::vector<SearchResult> PipelinedGraphReplicatedSearcher::PreFilterSearch(const std::vector<float> &query,

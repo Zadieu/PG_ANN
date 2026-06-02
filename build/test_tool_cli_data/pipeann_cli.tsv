@@ -1,0 +1,2 @@
+scale	layout	mode	threads	beam	mem_l	L	qps	avg_lat_us	p99_lat_us	mean_hops	mean_ios	unique_pg_io	dup_pg_hit	polls	recall_at_k	log
+test_tool_cli_data	gorgeous	2	1	3	0	8	12586.004363	76.000000	158.000000	0.000000	1.000000	0.000000	0.000000	0.000000	33.333333	test_tool_cli_data/pipeann_cli.tsv

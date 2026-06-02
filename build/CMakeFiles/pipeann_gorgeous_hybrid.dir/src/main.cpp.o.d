@@ -160,7 +160,14 @@ CMakeFiles/pipeann_gorgeous_hybrid.dir/src/main.cpp.o: \
  /home/adieu/OS/project/include/pipeline_search.h \
  /usr/include/c++/15/limits \
  /home/adieu/OS/project/include/quant/approx_distance.h \
+ /home/adieu/OS/project/include/search/graph_cache.h \
+ /usr/include/c++/15/unordered_map \
+ /usr/include/c++/15/bits/unordered_map.h \
+ /usr/include/c++/15/bits/hashtable.h \
+ /usr/include/c++/15/bits/hashtable_policy.h \
+ /usr/include/c++/15/bits/enable_special_members.h \
+ /usr/include/c++/15/bits/node_handle.h \
+ /usr/include/c++/15/bits/erase_if.h \
  /home/adieu/OS/project/include/tools/build_pipeline.h \
  /home/adieu/OS/project/include/integrations/pipeann_builder.h \
- /usr/include/c++/15/optional \
- /usr/include/c++/15/bits/enable_special_members.h
+ /usr/include/c++/15/optional

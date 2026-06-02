@@ -37,8 +37,17 @@ class IPageReader {
 };
 
 std::unique_ptr<IPageReader> CreatePageReader(const IndexReader &index, PageReaderBackend backend);
-std::unique_ptr<IPageReader> CreateBestEffortPageReader(const IndexReader &index);
+// Best-effort prefers the low-overhead async pread path for single-threaded
+// callers, but falls back to the thread-local Linux AIO backend when the
+// caller expects multi-threaded query execution.
+std::unique_ptr<IPageReader> CreateBestEffortPageReader(const IndexReader &index,
+                                                        uint32_t expected_concurrent_threads = 1);
 std::unique_ptr<IPageReader> CreateAsyncPreadPageReader(const IndexReader &index);
 std::unique_ptr<IPageReader> CreateLinuxAioPageReader(const IndexReader &index);
+// Bench and other multi-threaded callers should use this factory so explicit
+// backend selection cannot accidentally route them to the non-thread-safe
+// AsyncPread implementation.
+std::unique_ptr<IPageReader> CreateThreadLocalPageReader(const IndexReader &index,
+                                                         PageReaderBackend backend);
 
 }  // namespace hybrid

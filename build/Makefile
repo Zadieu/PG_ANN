@@ -65,16 +65,6 @@ CMAKE_BINARY_DIR = /home/adieu/OS/project/build
 #=============================================================================
 # Targets provided globally by CMake.
 
-# Special rule for the target test
-test:
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Running tests..."
-	/usr/bin/ctest --force-new-ctest-process $(ARGS)
-.PHONY : test
-
-# Special rule for the target test
-test/fast: test
-.PHONY : test/fast
-
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Running CMake cache editor..."
@@ -153,19 +143,6 @@ pipeann_gorgeous_core/fast:
 .PHONY : pipeann_gorgeous_core/fast
 
 #=============================================================================
-# Target rules for targets named pipeann_gorgeous_hybrid
-
-# Build rule for target.
-pipeann_gorgeous_hybrid: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 pipeann_gorgeous_hybrid
-.PHONY : pipeann_gorgeous_hybrid
-
-# fast build rule for target.
-pipeann_gorgeous_hybrid/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_hybrid.dir/build.make CMakeFiles/pipeann_gorgeous_hybrid.dir/build
-.PHONY : pipeann_gorgeous_hybrid/fast
-
-#=============================================================================
 # Target rules for targets named pipeann_gorgeous_build
 
 # Build rule for target.
@@ -177,32 +154,6 @@ pipeann_gorgeous_build: cmake_check_build_system
 pipeann_gorgeous_build/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_build.dir/build.make CMakeFiles/pipeann_gorgeous_build.dir/build
 .PHONY : pipeann_gorgeous_build/fast
-
-#=============================================================================
-# Target rules for targets named pipeann_gorgeous_search
-
-# Build rule for target.
-pipeann_gorgeous_search: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 pipeann_gorgeous_search
-.PHONY : pipeann_gorgeous_search
-
-# fast build rule for target.
-pipeann_gorgeous_search/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_search.dir/build.make CMakeFiles/pipeann_gorgeous_search.dir/build
-.PHONY : pipeann_gorgeous_search/fast
-
-#=============================================================================
-# Target rules for targets named pipeann_gorgeous_inspect
-
-# Build rule for target.
-pipeann_gorgeous_inspect: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 pipeann_gorgeous_inspect
-.PHONY : pipeann_gorgeous_inspect
-
-# fast build rule for target.
-pipeann_gorgeous_inspect/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_inspect.dir/build.make CMakeFiles/pipeann_gorgeous_inspect.dir/build
-.PHONY : pipeann_gorgeous_inspect/fast
 
 #=============================================================================
 # Target rules for targets named pipeann_gorgeous_bench
@@ -218,6 +169,19 @@ pipeann_gorgeous_bench/fast:
 .PHONY : pipeann_gorgeous_bench/fast
 
 #=============================================================================
+# Target rules for targets named pipeann_gorgeous_bench_pipeann
+
+# Build rule for target.
+pipeann_gorgeous_bench_pipeann: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 pipeann_gorgeous_bench_pipeann
+.PHONY : pipeann_gorgeous_bench_pipeann
+
+# fast build rule for target.
+pipeann_gorgeous_bench_pipeann/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_bench_pipeann.dir/build.make CMakeFiles/pipeann_gorgeous_bench_pipeann.dir/build
+.PHONY : pipeann_gorgeous_bench_pipeann/fast
+
+#=============================================================================
 # Target rules for targets named pipeann_gorgeous_ground_truth
 
 # Build rule for target.
@@ -229,6 +193,19 @@ pipeann_gorgeous_ground_truth: cmake_check_build_system
 pipeann_gorgeous_ground_truth/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_ground_truth.dir/build.make CMakeFiles/pipeann_gorgeous_ground_truth.dir/build
 .PHONY : pipeann_gorgeous_ground_truth/fast
+
+#=============================================================================
+# Target rules for targets named pipeann_gorgeous_relayout
+
+# Build rule for target.
+pipeann_gorgeous_relayout: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 pipeann_gorgeous_relayout
+.PHONY : pipeann_gorgeous_relayout
+
+# fast build rule for target.
+pipeann_gorgeous_relayout/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_relayout.dir/build.make CMakeFiles/pipeann_gorgeous_relayout.dir/build
+.PHONY : pipeann_gorgeous_relayout/fast
 
 #=============================================================================
 # Target rules for targets named pipeann_gorgeous_bench_merge
@@ -255,58 +232,6 @@ pipeann_gorgeous_bench_compare: cmake_check_build_system
 pipeann_gorgeous_bench_compare/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_bench_compare.dir/build.make CMakeFiles/pipeann_gorgeous_bench_compare.dir/build
 .PHONY : pipeann_gorgeous_bench_compare/fast
-
-#=============================================================================
-# Target rules for targets named pipeann_gorgeous_search_test
-
-# Build rule for target.
-pipeann_gorgeous_search_test: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 pipeann_gorgeous_search_test
-.PHONY : pipeann_gorgeous_search_test
-
-# fast build rule for target.
-pipeann_gorgeous_search_test/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_search_test.dir/build.make CMakeFiles/pipeann_gorgeous_search_test.dir/build
-.PHONY : pipeann_gorgeous_search_test/fast
-
-#=============================================================================
-# Target rules for targets named pipeann_gorgeous_build_test
-
-# Build rule for target.
-pipeann_gorgeous_build_test: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 pipeann_gorgeous_build_test
-.PHONY : pipeann_gorgeous_build_test
-
-# fast build rule for target.
-pipeann_gorgeous_build_test/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_build_test.dir/build.make CMakeFiles/pipeann_gorgeous_build_test.dir/build
-.PHONY : pipeann_gorgeous_build_test/fast
-
-#=============================================================================
-# Target rules for targets named pipeann_gorgeous_tool_cli_test
-
-# Build rule for target.
-pipeann_gorgeous_tool_cli_test: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 pipeann_gorgeous_tool_cli_test
-.PHONY : pipeann_gorgeous_tool_cli_test
-
-# fast build rule for target.
-pipeann_gorgeous_tool_cli_test/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_tool_cli_test.dir/build.make CMakeFiles/pipeann_gorgeous_tool_cli_test.dir/build
-.PHONY : pipeann_gorgeous_tool_cli_test/fast
-
-#=============================================================================
-# Target rules for targets named pipeann_gorgeous_integration_test
-
-# Build rule for target.
-pipeann_gorgeous_integration_test: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 pipeann_gorgeous_integration_test
-.PHONY : pipeann_gorgeous_integration_test
-
-# fast build rule for target.
-pipeann_gorgeous_integration_test/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_integration_test.dir/build.make CMakeFiles/pipeann_gorgeous_integration_test.dir/build
-.PHONY : pipeann_gorgeous_integration_test/fast
 
 src/bench_compare_main.o: src/bench_compare_main.cpp.o
 .PHONY : src/bench_compare_main.o
@@ -404,30 +329,6 @@ src/build_main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_build.dir/build.make CMakeFiles/pipeann_gorgeous_build.dir/src/build_main.cpp.s
 .PHONY : src/build_main.cpp.s
 
-src/gorgeous_layout.o: src/gorgeous_layout.cpp.o
-.PHONY : src/gorgeous_layout.o
-
-# target to build an object file
-src/gorgeous_layout.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/gorgeous_layout.cpp.o
-.PHONY : src/gorgeous_layout.cpp.o
-
-src/gorgeous_layout.i: src/gorgeous_layout.cpp.i
-.PHONY : src/gorgeous_layout.i
-
-# target to preprocess a source file
-src/gorgeous_layout.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/gorgeous_layout.cpp.i
-.PHONY : src/gorgeous_layout.cpp.i
-
-src/gorgeous_layout.s: src/gorgeous_layout.cpp.s
-.PHONY : src/gorgeous_layout.s
-
-# target to generate assembly for a file
-src/gorgeous_layout.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/gorgeous_layout.cpp.s
-.PHONY : src/gorgeous_layout.cpp.s
-
 src/ground_truth_main.o: src/ground_truth_main.cpp.o
 .PHONY : src/ground_truth_main.o
 
@@ -451,30 +352,6 @@ src/ground_truth_main.s: src/ground_truth_main.cpp.s
 src/ground_truth_main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_ground_truth.dir/build.make CMakeFiles/pipeann_gorgeous_ground_truth.dir/src/ground_truth_main.cpp.s
 .PHONY : src/ground_truth_main.cpp.s
-
-src/inspect_main.o: src/inspect_main.cpp.o
-.PHONY : src/inspect_main.o
-
-# target to build an object file
-src/inspect_main.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_inspect.dir/build.make CMakeFiles/pipeann_gorgeous_inspect.dir/src/inspect_main.cpp.o
-.PHONY : src/inspect_main.cpp.o
-
-src/inspect_main.i: src/inspect_main.cpp.i
-.PHONY : src/inspect_main.i
-
-# target to preprocess a source file
-src/inspect_main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_inspect.dir/build.make CMakeFiles/pipeann_gorgeous_inspect.dir/src/inspect_main.cpp.i
-.PHONY : src/inspect_main.cpp.i
-
-src/inspect_main.s: src/inspect_main.cpp.s
-.PHONY : src/inspect_main.s
-
-# target to generate assembly for a file
-src/inspect_main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_inspect.dir/build.make CMakeFiles/pipeann_gorgeous_inspect.dir/src/inspect_main.cpp.s
-.PHONY : src/inspect_main.cpp.s
 
 src/integrations/disk_index_relayout.o: src/integrations/disk_index_relayout.cpp.o
 .PHONY : src/integrations/disk_index_relayout.o
@@ -572,173 +449,149 @@ src/integrations/pipeann_builder.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_builder.cpp.s
 .PHONY : src/integrations/pipeann_builder.cpp.s
 
-src/io/page_reader.o: src/io/page_reader.cpp.o
-.PHONY : src/io/page_reader.o
+src/integrations/pipeann_layout_activate.o: src/integrations/pipeann_layout_activate.cpp.o
+.PHONY : src/integrations/pipeann_layout_activate.o
 
 # target to build an object file
-src/io/page_reader.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/io/page_reader.cpp.o
-.PHONY : src/io/page_reader.cpp.o
+src/integrations/pipeann_layout_activate.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_layout_activate.cpp.o
+.PHONY : src/integrations/pipeann_layout_activate.cpp.o
 
-src/io/page_reader.i: src/io/page_reader.cpp.i
-.PHONY : src/io/page_reader.i
+src/integrations/pipeann_layout_activate.i: src/integrations/pipeann_layout_activate.cpp.i
+.PHONY : src/integrations/pipeann_layout_activate.i
 
 # target to preprocess a source file
-src/io/page_reader.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/io/page_reader.cpp.i
-.PHONY : src/io/page_reader.cpp.i
+src/integrations/pipeann_layout_activate.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_layout_activate.cpp.i
+.PHONY : src/integrations/pipeann_layout_activate.cpp.i
 
-src/io/page_reader.s: src/io/page_reader.cpp.s
-.PHONY : src/io/page_reader.s
+src/integrations/pipeann_layout_activate.s: src/integrations/pipeann_layout_activate.cpp.s
+.PHONY : src/integrations/pipeann_layout_activate.s
 
 # target to generate assembly for a file
-src/io/page_reader.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/io/page_reader.cpp.s
-.PHONY : src/io/page_reader.cpp.s
+src/integrations/pipeann_layout_activate.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_layout_activate.cpp.s
+.PHONY : src/integrations/pipeann_layout_activate.cpp.s
 
-src/main.o: src/main.cpp.o
-.PHONY : src/main.o
+src/integrations/pipeann_parity_bench.o: src/integrations/pipeann_parity_bench.cpp.o
+.PHONY : src/integrations/pipeann_parity_bench.o
 
 # target to build an object file
-src/main.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_hybrid.dir/build.make CMakeFiles/pipeann_gorgeous_hybrid.dir/src/main.cpp.o
-.PHONY : src/main.cpp.o
+src/integrations/pipeann_parity_bench.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_bench.cpp.o
+.PHONY : src/integrations/pipeann_parity_bench.cpp.o
 
-src/main.i: src/main.cpp.i
-.PHONY : src/main.i
+src/integrations/pipeann_parity_bench.i: src/integrations/pipeann_parity_bench.cpp.i
+.PHONY : src/integrations/pipeann_parity_bench.i
 
 # target to preprocess a source file
-src/main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_hybrid.dir/build.make CMakeFiles/pipeann_gorgeous_hybrid.dir/src/main.cpp.i
-.PHONY : src/main.cpp.i
+src/integrations/pipeann_parity_bench.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_bench.cpp.i
+.PHONY : src/integrations/pipeann_parity_bench.cpp.i
 
-src/main.s: src/main.cpp.s
-.PHONY : src/main.s
+src/integrations/pipeann_parity_bench.s: src/integrations/pipeann_parity_bench.cpp.s
+.PHONY : src/integrations/pipeann_parity_bench.s
 
 # target to generate assembly for a file
-src/main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_hybrid.dir/build.make CMakeFiles/pipeann_gorgeous_hybrid.dir/src/main.cpp.s
-.PHONY : src/main.cpp.s
+src/integrations/pipeann_parity_bench.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_bench.cpp.s
+.PHONY : src/integrations/pipeann_parity_bench.cpp.s
 
-src/pipeline_search.o: src/pipeline_search.cpp.o
-.PHONY : src/pipeline_search.o
+src/integrations/pipeann_parity_index.o: src/integrations/pipeann_parity_index.cpp.o
+.PHONY : src/integrations/pipeann_parity_index.o
 
 # target to build an object file
-src/pipeline_search.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.o
-.PHONY : src/pipeline_search.cpp.o
+src/integrations/pipeann_parity_index.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_index.cpp.o
+.PHONY : src/integrations/pipeann_parity_index.cpp.o
 
-src/pipeline_search.i: src/pipeline_search.cpp.i
-.PHONY : src/pipeline_search.i
+src/integrations/pipeann_parity_index.i: src/integrations/pipeann_parity_index.cpp.i
+.PHONY : src/integrations/pipeann_parity_index.i
 
 # target to preprocess a source file
-src/pipeline_search.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.i
-.PHONY : src/pipeline_search.cpp.i
+src/integrations/pipeann_parity_index.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_index.cpp.i
+.PHONY : src/integrations/pipeann_parity_index.cpp.i
 
-src/pipeline_search.s: src/pipeline_search.cpp.s
-.PHONY : src/pipeline_search.s
+src/integrations/pipeann_parity_index.s: src/integrations/pipeann_parity_index.cpp.s
+.PHONY : src/integrations/pipeann_parity_index.s
 
 # target to generate assembly for a file
-src/pipeline_search.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.s
-.PHONY : src/pipeline_search.cpp.s
+src/integrations/pipeann_parity_index.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_index.cpp.s
+.PHONY : src/integrations/pipeann_parity_index.cpp.s
 
-src/quant/approx_distance.o: src/quant/approx_distance.cpp.o
-.PHONY : src/quant/approx_distance.o
+src/integrations/pipeann_parity_searcher.o: src/integrations/pipeann_parity_searcher.cpp.o
+.PHONY : src/integrations/pipeann_parity_searcher.o
 
 # target to build an object file
-src/quant/approx_distance.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/quant/approx_distance.cpp.o
-.PHONY : src/quant/approx_distance.cpp.o
+src/integrations/pipeann_parity_searcher.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_searcher.cpp.o
+.PHONY : src/integrations/pipeann_parity_searcher.cpp.o
 
-src/quant/approx_distance.i: src/quant/approx_distance.cpp.i
-.PHONY : src/quant/approx_distance.i
+src/integrations/pipeann_parity_searcher.i: src/integrations/pipeann_parity_searcher.cpp.i
+.PHONY : src/integrations/pipeann_parity_searcher.i
 
 # target to preprocess a source file
-src/quant/approx_distance.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/quant/approx_distance.cpp.i
-.PHONY : src/quant/approx_distance.cpp.i
+src/integrations/pipeann_parity_searcher.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_searcher.cpp.i
+.PHONY : src/integrations/pipeann_parity_searcher.cpp.i
 
-src/quant/approx_distance.s: src/quant/approx_distance.cpp.s
-.PHONY : src/quant/approx_distance.s
+src/integrations/pipeann_parity_searcher.s: src/integrations/pipeann_parity_searcher.cpp.s
+.PHONY : src/integrations/pipeann_parity_searcher.s
 
 # target to generate assembly for a file
-src/quant/approx_distance.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/quant/approx_distance.cpp.s
-.PHONY : src/quant/approx_distance.cpp.s
+src/integrations/pipeann_parity_searcher.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_parity_searcher.cpp.s
+.PHONY : src/integrations/pipeann_parity_searcher.cpp.s
 
-src/search/candidate_pool.o: src/search/candidate_pool.cpp.o
-.PHONY : src/search/candidate_pool.o
+src/pipeann_parity_main.o: src/pipeann_parity_main.cpp.o
+.PHONY : src/pipeann_parity_main.o
 
 # target to build an object file
-src/search/candidate_pool.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/search/candidate_pool.cpp.o
-.PHONY : src/search/candidate_pool.cpp.o
+src/pipeann_parity_main.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_bench_pipeann.dir/build.make CMakeFiles/pipeann_gorgeous_bench_pipeann.dir/src/pipeann_parity_main.cpp.o
+.PHONY : src/pipeann_parity_main.cpp.o
 
-src/search/candidate_pool.i: src/search/candidate_pool.cpp.i
-.PHONY : src/search/candidate_pool.i
+src/pipeann_parity_main.i: src/pipeann_parity_main.cpp.i
+.PHONY : src/pipeann_parity_main.i
 
 # target to preprocess a source file
-src/search/candidate_pool.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/search/candidate_pool.cpp.i
-.PHONY : src/search/candidate_pool.cpp.i
+src/pipeann_parity_main.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_bench_pipeann.dir/build.make CMakeFiles/pipeann_gorgeous_bench_pipeann.dir/src/pipeann_parity_main.cpp.i
+.PHONY : src/pipeann_parity_main.cpp.i
 
-src/search/candidate_pool.s: src/search/candidate_pool.cpp.s
-.PHONY : src/search/candidate_pool.s
+src/pipeann_parity_main.s: src/pipeann_parity_main.cpp.s
+.PHONY : src/pipeann_parity_main.s
 
 # target to generate assembly for a file
-src/search/candidate_pool.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/search/candidate_pool.cpp.s
-.PHONY : src/search/candidate_pool.cpp.s
+src/pipeann_parity_main.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_bench_pipeann.dir/build.make CMakeFiles/pipeann_gorgeous_bench_pipeann.dir/src/pipeann_parity_main.cpp.s
+.PHONY : src/pipeann_parity_main.cpp.s
 
-src/search/search_session.o: src/search/search_session.cpp.o
-.PHONY : src/search/search_session.o
+src/relayout_main.o: src/relayout_main.cpp.o
+.PHONY : src/relayout_main.o
 
 # target to build an object file
-src/search/search_session.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/search/search_session.cpp.o
-.PHONY : src/search/search_session.cpp.o
+src/relayout_main.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_relayout.dir/build.make CMakeFiles/pipeann_gorgeous_relayout.dir/src/relayout_main.cpp.o
+.PHONY : src/relayout_main.cpp.o
 
-src/search/search_session.i: src/search/search_session.cpp.i
-.PHONY : src/search/search_session.i
-
-# target to preprocess a source file
-src/search/search_session.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/search/search_session.cpp.i
-.PHONY : src/search/search_session.cpp.i
-
-src/search/search_session.s: src/search/search_session.cpp.s
-.PHONY : src/search/search_session.s
-
-# target to generate assembly for a file
-src/search/search_session.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/search/search_session.cpp.s
-.PHONY : src/search/search_session.cpp.s
-
-src/search_main.o: src/search_main.cpp.o
-.PHONY : src/search_main.o
-
-# target to build an object file
-src/search_main.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_search.dir/build.make CMakeFiles/pipeann_gorgeous_search.dir/src/search_main.cpp.o
-.PHONY : src/search_main.cpp.o
-
-src/search_main.i: src/search_main.cpp.i
-.PHONY : src/search_main.i
+src/relayout_main.i: src/relayout_main.cpp.i
+.PHONY : src/relayout_main.i
 
 # target to preprocess a source file
-src/search_main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_search.dir/build.make CMakeFiles/pipeann_gorgeous_search.dir/src/search_main.cpp.i
-.PHONY : src/search_main.cpp.i
+src/relayout_main.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_relayout.dir/build.make CMakeFiles/pipeann_gorgeous_relayout.dir/src/relayout_main.cpp.i
+.PHONY : src/relayout_main.cpp.i
 
-src/search_main.s: src/search_main.cpp.s
-.PHONY : src/search_main.s
+src/relayout_main.s: src/relayout_main.cpp.s
+.PHONY : src/relayout_main.s
 
 # target to generate assembly for a file
-src/search_main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_search.dir/build.make CMakeFiles/pipeann_gorgeous_search.dir/src/search_main.cpp.s
-.PHONY : src/search_main.cpp.s
+src/relayout_main.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_relayout.dir/build.make CMakeFiles/pipeann_gorgeous_relayout.dir/src/relayout_main.cpp.s
+.PHONY : src/relayout_main.cpp.s
 
 src/tools/build_pipeline.o: src/tools/build_pipeline.cpp.o
 .PHONY : src/tools/build_pipeline.o
@@ -787,102 +640,6 @@ src/tools/tool_cli.s: src/tools/tool_cli.cpp.s
 src/tools/tool_cli.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/tools/tool_cli.cpp.s
 .PHONY : src/tools/tool_cli.cpp.s
-
-tests/build_pipeline_test.o: tests/build_pipeline_test.cpp.o
-.PHONY : tests/build_pipeline_test.o
-
-# target to build an object file
-tests/build_pipeline_test.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_build_test.dir/build.make CMakeFiles/pipeann_gorgeous_build_test.dir/tests/build_pipeline_test.cpp.o
-.PHONY : tests/build_pipeline_test.cpp.o
-
-tests/build_pipeline_test.i: tests/build_pipeline_test.cpp.i
-.PHONY : tests/build_pipeline_test.i
-
-# target to preprocess a source file
-tests/build_pipeline_test.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_build_test.dir/build.make CMakeFiles/pipeann_gorgeous_build_test.dir/tests/build_pipeline_test.cpp.i
-.PHONY : tests/build_pipeline_test.cpp.i
-
-tests/build_pipeline_test.s: tests/build_pipeline_test.cpp.s
-.PHONY : tests/build_pipeline_test.s
-
-# target to generate assembly for a file
-tests/build_pipeline_test.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_build_test.dir/build.make CMakeFiles/pipeann_gorgeous_build_test.dir/tests/build_pipeline_test.cpp.s
-.PHONY : tests/build_pipeline_test.cpp.s
-
-tests/integration_modules_test.o: tests/integration_modules_test.cpp.o
-.PHONY : tests/integration_modules_test.o
-
-# target to build an object file
-tests/integration_modules_test.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_integration_test.dir/build.make CMakeFiles/pipeann_gorgeous_integration_test.dir/tests/integration_modules_test.cpp.o
-.PHONY : tests/integration_modules_test.cpp.o
-
-tests/integration_modules_test.i: tests/integration_modules_test.cpp.i
-.PHONY : tests/integration_modules_test.i
-
-# target to preprocess a source file
-tests/integration_modules_test.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_integration_test.dir/build.make CMakeFiles/pipeann_gorgeous_integration_test.dir/tests/integration_modules_test.cpp.i
-.PHONY : tests/integration_modules_test.cpp.i
-
-tests/integration_modules_test.s: tests/integration_modules_test.cpp.s
-.PHONY : tests/integration_modules_test.s
-
-# target to generate assembly for a file
-tests/integration_modules_test.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_integration_test.dir/build.make CMakeFiles/pipeann_gorgeous_integration_test.dir/tests/integration_modules_test.cpp.s
-.PHONY : tests/integration_modules_test.cpp.s
-
-tests/pipeline_search_test.o: tests/pipeline_search_test.cpp.o
-.PHONY : tests/pipeline_search_test.o
-
-# target to build an object file
-tests/pipeline_search_test.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_search_test.dir/build.make CMakeFiles/pipeann_gorgeous_search_test.dir/tests/pipeline_search_test.cpp.o
-.PHONY : tests/pipeline_search_test.cpp.o
-
-tests/pipeline_search_test.i: tests/pipeline_search_test.cpp.i
-.PHONY : tests/pipeline_search_test.i
-
-# target to preprocess a source file
-tests/pipeline_search_test.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_search_test.dir/build.make CMakeFiles/pipeann_gorgeous_search_test.dir/tests/pipeline_search_test.cpp.i
-.PHONY : tests/pipeline_search_test.cpp.i
-
-tests/pipeline_search_test.s: tests/pipeline_search_test.cpp.s
-.PHONY : tests/pipeline_search_test.s
-
-# target to generate assembly for a file
-tests/pipeline_search_test.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_search_test.dir/build.make CMakeFiles/pipeann_gorgeous_search_test.dir/tests/pipeline_search_test.cpp.s
-.PHONY : tests/pipeline_search_test.cpp.s
-
-tests/tool_cli_test.o: tests/tool_cli_test.cpp.o
-.PHONY : tests/tool_cli_test.o
-
-# target to build an object file
-tests/tool_cli_test.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_tool_cli_test.dir/build.make CMakeFiles/pipeann_gorgeous_tool_cli_test.dir/tests/tool_cli_test.cpp.o
-.PHONY : tests/tool_cli_test.cpp.o
-
-tests/tool_cli_test.i: tests/tool_cli_test.cpp.i
-.PHONY : tests/tool_cli_test.i
-
-# target to preprocess a source file
-tests/tool_cli_test.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_tool_cli_test.dir/build.make CMakeFiles/pipeann_gorgeous_tool_cli_test.dir/tests/tool_cli_test.cpp.i
-.PHONY : tests/tool_cli_test.cpp.i
-
-tests/tool_cli_test.s: tests/tool_cli_test.cpp.s
-.PHONY : tests/tool_cli_test.s
-
-# target to generate assembly for a file
-tests/tool_cli_test.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_tool_cli_test.dir/build.make CMakeFiles/pipeann_gorgeous_tool_cli_test.dir/tests/tool_cli_test.cpp.s
-.PHONY : tests/tool_cli_test.cpp.s
 
 third_party/pipeann/src/index.o: third_party/pipeann/src/index.cpp.o
 .PHONY : third_party/pipeann/src/index.o
@@ -1252,20 +1009,14 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... test"
 	@echo "... pipeann_gorgeous_bench"
 	@echo "... pipeann_gorgeous_bench_compare"
 	@echo "... pipeann_gorgeous_bench_merge"
+	@echo "... pipeann_gorgeous_bench_pipeann"
 	@echo "... pipeann_gorgeous_build"
-	@echo "... pipeann_gorgeous_build_test"
 	@echo "... pipeann_gorgeous_core"
 	@echo "... pipeann_gorgeous_ground_truth"
-	@echo "... pipeann_gorgeous_hybrid"
-	@echo "... pipeann_gorgeous_inspect"
-	@echo "... pipeann_gorgeous_integration_test"
-	@echo "... pipeann_gorgeous_search"
-	@echo "... pipeann_gorgeous_search_test"
-	@echo "... pipeann_gorgeous_tool_cli_test"
+	@echo "... pipeann_gorgeous_relayout"
 	@echo "... pipeann_original_core"
 	@echo "... src/bench_compare_main.o"
 	@echo "... src/bench_compare_main.i"
@@ -1279,15 +1030,9 @@ help:
 	@echo "... src/build_main.o"
 	@echo "... src/build_main.i"
 	@echo "... src/build_main.s"
-	@echo "... src/gorgeous_layout.o"
-	@echo "... src/gorgeous_layout.i"
-	@echo "... src/gorgeous_layout.s"
 	@echo "... src/ground_truth_main.o"
 	@echo "... src/ground_truth_main.i"
 	@echo "... src/ground_truth_main.s"
-	@echo "... src/inspect_main.o"
-	@echo "... src/inspect_main.i"
-	@echo "... src/inspect_main.s"
 	@echo "... src/integrations/disk_index_relayout.o"
 	@echo "... src/integrations/disk_index_relayout.i"
 	@echo "... src/integrations/disk_index_relayout.s"
@@ -1300,45 +1045,30 @@ help:
 	@echo "... src/integrations/pipeann_builder.o"
 	@echo "... src/integrations/pipeann_builder.i"
 	@echo "... src/integrations/pipeann_builder.s"
-	@echo "... src/io/page_reader.o"
-	@echo "... src/io/page_reader.i"
-	@echo "... src/io/page_reader.s"
-	@echo "... src/main.o"
-	@echo "... src/main.i"
-	@echo "... src/main.s"
-	@echo "... src/pipeline_search.o"
-	@echo "... src/pipeline_search.i"
-	@echo "... src/pipeline_search.s"
-	@echo "... src/quant/approx_distance.o"
-	@echo "... src/quant/approx_distance.i"
-	@echo "... src/quant/approx_distance.s"
-	@echo "... src/search/candidate_pool.o"
-	@echo "... src/search/candidate_pool.i"
-	@echo "... src/search/candidate_pool.s"
-	@echo "... src/search/search_session.o"
-	@echo "... src/search/search_session.i"
-	@echo "... src/search/search_session.s"
-	@echo "... src/search_main.o"
-	@echo "... src/search_main.i"
-	@echo "... src/search_main.s"
+	@echo "... src/integrations/pipeann_layout_activate.o"
+	@echo "... src/integrations/pipeann_layout_activate.i"
+	@echo "... src/integrations/pipeann_layout_activate.s"
+	@echo "... src/integrations/pipeann_parity_bench.o"
+	@echo "... src/integrations/pipeann_parity_bench.i"
+	@echo "... src/integrations/pipeann_parity_bench.s"
+	@echo "... src/integrations/pipeann_parity_index.o"
+	@echo "... src/integrations/pipeann_parity_index.i"
+	@echo "... src/integrations/pipeann_parity_index.s"
+	@echo "... src/integrations/pipeann_parity_searcher.o"
+	@echo "... src/integrations/pipeann_parity_searcher.i"
+	@echo "... src/integrations/pipeann_parity_searcher.s"
+	@echo "... src/pipeann_parity_main.o"
+	@echo "... src/pipeann_parity_main.i"
+	@echo "... src/pipeann_parity_main.s"
+	@echo "... src/relayout_main.o"
+	@echo "... src/relayout_main.i"
+	@echo "... src/relayout_main.s"
 	@echo "... src/tools/build_pipeline.o"
 	@echo "... src/tools/build_pipeline.i"
 	@echo "... src/tools/build_pipeline.s"
 	@echo "... src/tools/tool_cli.o"
 	@echo "... src/tools/tool_cli.i"
 	@echo "... src/tools/tool_cli.s"
-	@echo "... tests/build_pipeline_test.o"
-	@echo "... tests/build_pipeline_test.i"
-	@echo "... tests/build_pipeline_test.s"
-	@echo "... tests/integration_modules_test.o"
-	@echo "... tests/integration_modules_test.i"
-	@echo "... tests/integration_modules_test.s"
-	@echo "... tests/pipeline_search_test.o"
-	@echo "... tests/pipeline_search_test.i"
-	@echo "... tests/pipeline_search_test.s"
-	@echo "... tests/tool_cli_test.o"
-	@echo "... tests/tool_cli_test.i"
-	@echo "... tests/tool_cli_test.s"
 	@echo "... third_party/pipeann/src/index.o"
 	@echo "... third_party/pipeann/src/index.i"
 	@echo "... third_party/pipeann/src/index.s"

@@ -383,4 +383,6 @@ CMakeFiles/pipeann_gorgeous_search_test.dir/tests/pipeline_search_test.cpp.o: \
  /home/adieu/OS/project/include/integrations/pipeann_builder.h \
  /usr/include/c++/15/optional \
  /home/adieu/OS/project/include/pipeline_search.h \
- /home/adieu/OS/project/include/quant/approx_distance.h
+ /home/adieu/OS/project/include/io/page_reader.h \
+ /home/adieu/OS/project/include/quant/approx_distance.h \
+ /home/adieu/OS/project/include/search/graph_cache.h

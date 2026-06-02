@@ -10,6 +10,7 @@
 #include <memory>
 
 #include "aligned_file_reader.h"
+#include "gorgeous_layout_adapter.h"
 #include "ssd_index_defs.h"
 #include "filter/attribute.h"
 #include "filter/selector.h"

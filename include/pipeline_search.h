@@ -7,8 +7,10 @@
 #include <vector>
 
 #include "gorgeous_layout.h"
+#include "io/page_reader.h"
 #include "quant/approx_distance.h"
 #include "search/graph_cache.h"
+#include "search/query_buffer_pool.h"
 
 namespace pipeann {
 struct Attributes;
@@ -138,6 +140,16 @@ class PipelinedGraphReplicatedSearcher {
   std::vector<SearchResult> Search(const std::vector<float> &query,
                                    const SearchConfig &config,
                                    SearchStats *stats = nullptr) const;
+  std::vector<SearchResult> Search(const std::vector<float> &query,
+                                   const SearchConfig &config,
+                                   ApproxDistanceKind approx_kind,
+                                   IPageReader &page_reader,
+                                   const GraphAdjacencyCache *graph_cache,
+                                   const PipeannProductQuantization *shared_pq,
+                                   SearchStats *stats,
+                                   QueryBufferState *query_buffer = nullptr,
+                                   const std::string &pq_codebook_path = {},
+                                   const std::string &pq_codes_path = {}) const;
   std::vector<SearchResult> Search(const std::vector<float> &query,
                                    const SearchConfig &config,
                                    ApproxDistanceKind approx_kind,

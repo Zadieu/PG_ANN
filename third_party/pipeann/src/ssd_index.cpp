@@ -206,10 +206,19 @@ namespace pipeann {
   template<typename T, typename TagT>
   void SSDIndex<T, TagT>::load_page_layout(const std::string &index_prefix, const uint64_t nnodes_per_sector,
                                            const uint64_t num_points) {
-    std::string partition_file = index_prefix + "_partition.bin.aligned";
     id2loc_.resize(num_points);  // pre-allocate space first.
     loc2id_.resize(cur_loc);     // pre-allocate space first.
 
+    uint64_t g_C, g_pages, g_nd;
+    if (LoadGorgeousPartition(index_prefix, g_C, g_pages, g_nd, id2loc_, loc2id_)) {
+      if (meta_.nnodes_per_sector != g_C) {
+        LOG(INFO) << "Updating nnodes_per_sector from " << meta_.nnodes_per_sector << " to " << g_C;
+        meta_.nnodes_per_sector = g_C;
+      }
+      return;
+    }
+
+    std::string partition_file = index_prefix + "_partition.bin.aligned";
     if (file_exists(partition_file)) {
       LOG(INFO) << "Loading partition file " << partition_file;
       std::ifstream part(partition_file);

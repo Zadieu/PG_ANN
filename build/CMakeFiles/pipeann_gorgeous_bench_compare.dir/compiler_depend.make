@@ -4,9 +4,11 @@
 CMakeFiles/pipeann_gorgeous_bench_compare.dir/src/bench_compare_main.cpp.o: /home/adieu/OS/project/src/bench_compare_main.cpp \
   /home/adieu/OS/project/include/gorgeous_layout.h \
   /home/adieu/OS/project/include/integrations/disk_index_relayout.h \
+  /home/adieu/OS/project/include/integrations/linux_aligned_file_reader.h \
   /home/adieu/OS/project/include/integrations/pipeann_builder.h \
   /home/adieu/OS/project/include/pipeline_search.h \
   /home/adieu/OS/project/include/quant/approx_distance.h \
+  /home/adieu/OS/project/include/search/graph_cache.h \
   /home/adieu/OS/project/include/tools/tool_cli.h \
   /usr/include/alloca.h \
   /usr/include/asm-generic/errno-base.h \
@@ -95,6 +97,7 @@ CMakeFiles/pipeann_gorgeous_bench_compare.dir/src/bench_compare_main.cpp.o: /hom
   /usr/include/c++/15/bits/cxxabi_forced.h \
   /usr/include/c++/15/bits/cxxabi_init_exception.h \
   /usr/include/c++/15/bits/enable_special_members.h \
+  /usr/include/c++/15/bits/erase_if.h \
   /usr/include/c++/15/bits/exception.h \
   /usr/include/c++/15/bits/exception_defines.h \
   /usr/include/c++/15/bits/exception_ptr.h \
@@ -106,6 +109,8 @@ CMakeFiles/pipeann_gorgeous_bench_compare.dir/src/bench_compare_main.cpp.o: /hom
   /usr/include/c++/15/bits/functexcept.h \
   /usr/include/c++/15/bits/functional_hash.h \
   /usr/include/c++/15/bits/hash_bytes.h \
+  /usr/include/c++/15/bits/hashtable.h \
+  /usr/include/c++/15/bits/hashtable_policy.h \
   /usr/include/c++/15/bits/invoke.h \
   /usr/include/c++/15/bits/ios_base.h \
   /usr/include/c++/15/bits/istream.tcc \
@@ -122,6 +127,7 @@ CMakeFiles/pipeann_gorgeous_bench_compare.dir/src/bench_compare_main.cpp.o: /hom
   /usr/include/c++/15/bits/move.h \
   /usr/include/c++/15/bits/nested_exception.h \
   /usr/include/c++/15/bits/new_allocator.h \
+  /usr/include/c++/15/bits/node_handle.h \
   /usr/include/c++/15/bits/ostream.h \
   /usr/include/c++/15/bits/ostream.tcc \
   /usr/include/c++/15/bits/ostream_insert.h \
@@ -155,6 +161,7 @@ CMakeFiles/pipeann_gorgeous_bench_compare.dir/src/bench_compare_main.cpp.o: /hom
   /usr/include/c++/15/bits/string_view.tcc \
   /usr/include/c++/15/bits/stringfwd.h \
   /usr/include/c++/15/bits/unique_ptr.h \
+  /usr/include/c++/15/bits/unordered_map.h \
   /usr/include/c++/15/bits/uses_allocator.h \
   /usr/include/c++/15/bits/uses_allocator_args.h \
   /usr/include/c++/15/bits/utility.h \
@@ -209,6 +216,7 @@ CMakeFiles/pipeann_gorgeous_bench_compare.dir/src/bench_compare_main.cpp.o: /hom
   /usr/include/c++/15/tuple \
   /usr/include/c++/15/type_traits \
   /usr/include/c++/15/typeinfo \
+  /usr/include/c++/15/unordered_map \
   /usr/include/c++/15/vector \
   /usr/include/c++/15/x86_64-suse-linux/bits/atomic_word.h \
   /usr/include/c++/15/x86_64-suse-linux/bits/basic_file.h \
@@ -300,7 +308,15 @@ CMakeFiles/pipeann_gorgeous_bench_compare.dir/src/bench_compare_main.cpp.o:
 
 /usr/lib64/libm.so:
 
-/usr/include/c++/15/bits/ostream.tcc:
+/usr/lib64/crt1.o:
+
+/lib64/libmvec.so.1:
+
+/lib64/libc.so.6:
+
+/lib64/ld-linux-x86-64.so.2:
+
+/usr/lib64/gcc/x86_64-suse-linux/15/include/stdint.h:
 
 /usr/include/c++/15/bits/move.h:
 
@@ -326,6 +342,10 @@ CMakeFiles/pipeann_gorgeous_bench_compare.dir/src/bench_compare_main.cpp.o:
 
 /usr/include/c++/15/bits/locale_classes.tcc:
 
+/lib64/libm.so.6:
+
+/usr/include/c++/15/bits/hash_bytes.h:
+
 /usr/include/c++/15/bits/locale_classes.h:
 
 /usr/include/bits/types/locale_t.h:
@@ -344,17 +364,17 @@ CMakeFiles/pipeann_gorgeous_bench_compare.dir/src/bench_compare_main.cpp.o:
 
 /usr/include/c++/15/bits/shared_ptr.h:
 
-/usr/include/c++/15/bits/stringfwd.h:
-
 /usr/include/c++/15/bits/nested_exception.h:
 
-/lib64/ld-linux-x86-64.so.2:
+/home/adieu/OS/project/include/integrations/linux_aligned_file_reader.h:
 
 /usr/include/c++/15/initializer_list:
 
-/usr/include/c++/15/bits/ostream.h:
+/usr/include/c++/15/bits/stringfwd.h:
 
-/usr/include/c++/15/fstream:
+/usr/include/c++/15/bits/erase_if.h:
+
+/usr/include/c++/15/bits/alloc_traits.h:
 
 /usr/include/c++/15/bits/cxxabi_init_exception.h:
 
@@ -380,6 +400,10 @@ CMakeFiles/pipeann_gorgeous_bench_compare.dir/src/bench_compare_main.cpp.o:
 
 /usr/include/c++/15/backward/binders.h:
 
+/usr/include/c++/15/bits/new_allocator.h:
+
+/usr/include/bits/cpu-set.h:
+
 /usr/include/c++/15/bits/cpp_type_traits.h:
 
 /usr/include/bits/wctype-wchar.h:
@@ -396,6 +420,10 @@ CMakeFiles/pipeann_gorgeous_bench_compare.dir/src/bench_compare_main.cpp.o:
 
 /usr/include/c++/15/x86_64-suse-linux/bits/c++io.h:
 
+/usr/include/c++/15/bits/uses_allocator.h:
+
+/usr/include/bits/struct_rwlock.h:
+
 /usr/include/bits/select.h:
 
 /home/adieu/OS/project/include/integrations/pipeann_builder.h:
@@ -404,9 +432,9 @@ CMakeFiles/pipeann_gorgeous_bench_compare.dir/src/bench_compare_main.cpp.o:
 
 /usr/include/bits/types/mbstate_t.h:
 
-/usr/include/c++/15/bits/exception_defines.h:
-
 /usr/include/bits/types/timer_t.h:
+
+/usr/include/c++/15/bits/exception_defines.h:
 
 /usr/include/c++/15/backward/auto_ptr.h:
 
@@ -432,29 +460,13 @@ CMakeFiles/pipeann_gorgeous_bench_compare.dir/src/bench_compare_main.cpp.o:
 
 /usr/include/c++/15/istream:
 
-/usr/include/bits/long-double.h:
+/usr/include/c++/15/bits/node_handle.h:
 
-/usr/include/bits/uintn-identity.h:
-
-/usr/include/bits/typesizes.h:
-
-/usr/include/bits/struct_mutex.h:
-
-/usr/include/c++/15/bits/atomic_base.h:
-
-/usr/include/c++/15/x86_64-suse-linux/bits/atomic_word.h:
-
-/usr/include/bits/types/time_t.h:
-
-/usr/include/bits/types/struct_itimerspec.h:
+/usr/include/c++/15/pstl/glue_memory_defs.h:
 
 /usr/include/c++/15/bits/stl_iterator_base_funcs.h:
 
 /usr/include/c++/15/ext/atomicity.h:
-
-/usr/include/bits/locale.h:
-
-/usr/include/c++/15/x86_64-suse-linux/bits/gthr.h:
 
 /usr/include/c++/15/bits/char_traits.h:
 
@@ -470,15 +482,37 @@ CMakeFiles/pipeann_gorgeous_bench_compare.dir/src/bench_compare_main.cpp.o:
 
 /usr/include/bits/stdlib-float.h:
 
-/home/adieu/OS/project/include/quant/approx_distance.h:
+/usr/include/c++/15/x86_64-suse-linux/bits/gthr.h:
 
-/home/adieu/OS/project/include/integrations/disk_index_relayout.h:
+/usr/include/bits/locale.h:
+
+/usr/include/c++/15/bits/unordered_map.h:
+
+/usr/include/bits/long-double.h:
+
+/usr/include/bits/uintn-identity.h:
+
+/usr/include/bits/typesizes.h:
+
+/usr/include/bits/struct_mutex.h:
+
+/usr/include/c++/15/bits/atomic_base.h:
+
+/usr/include/c++/15/x86_64-suse-linux/bits/atomic_word.h:
+
+/home/adieu/OS/project/include/quant/approx_distance.h:
 
 /usr/include/bits/types/__locale_t.h:
 
-/usr/include/bits/pthreadtypes.h:
+/home/adieu/OS/project/include/integrations/disk_index_relayout.h:
 
-/lib64/libmvec.so.1:
+/usr/include/bits/types/time_t.h:
+
+/usr/include/bits/types/struct_itimerspec.h:
+
+/usr/include/c++/15/bits/hashtable.h:
+
+/usr/include/bits/pthreadtypes.h:
 
 /usr/include/bits/floatn.h:
 
@@ -494,23 +528,17 @@ CMakeFiles/pipeann_gorgeous_bench_compare.dir/src/bench_compare_main.cpp.o:
 
 /usr/include/alloca.h:
 
+/home/adieu/OS/project/include/search/graph_cache.h:
+
 /usr/include/asm-generic/errno.h:
-
-/usr/include/bits/cpu-set.h:
-
-/usr/include/c++/15/bits/new_allocator.h:
-
-/usr/include/bits/struct_rwlock.h:
-
-/usr/include/c++/15/bits/uses_allocator.h:
-
-/usr/lib64/crt1.o:
 
 /usr/include/bits/types/__fpos_t.h:
 
 /usr/include/c++/15/bits/charconv.h:
 
 /usr/include/bits/types/clock_t.h:
+
+/usr/include/asm-generic/errno-base.h:
 
 /usr/include/c++/15/bits/istream.tcc:
 
@@ -528,8 +556,6 @@ CMakeFiles/pipeann_gorgeous_bench_compare.dir/src/bench_compare_main.cpp.o:
 
 /usr/include/bits/types/struct___jmp_buf_tag.h:
 
-/usr/include/asm-generic/errno-base.h:
-
 /usr/include/bits/types/struct_timeval.h:
 
 /usr/lib64/gcc/x86_64-suse-linux/15/libgcc_s.so.1:
@@ -542,8 +568,6 @@ CMakeFiles/pipeann_gorgeous_bench_compare.dir/src/bench_compare_main.cpp.o:
 
 /usr/include/c++/15/bits/codecvt.h:
 
-/usr/include/c++/15/x86_64-suse-linux/bits/ctype_base.h:
-
 /usr/include/bits/stdint-uintn.h:
 
 /home/adieu/OS/project/src/bench_compare_main.cpp:
@@ -551,6 +575,8 @@ CMakeFiles/pipeann_gorgeous_bench_compare.dir/src/bench_compare_main.cpp.o:
 /usr/include/c++/15/x86_64-suse-linux/bits/os_defines.h:
 
 /usr/include/asm/errno.h:
+
+/usr/include/c++/15/x86_64-suse-linux/bits/ctype_base.h:
 
 /usr/include/c++/15/bits/utility.h:
 
@@ -582,15 +608,7 @@ CMakeFiles/pipeann_gorgeous_bench_compare.dir/src/bench_compare_main.cpp.o:
 
 /usr/include/sched.h:
 
-libpipeann_original_core.a:
-
-/usr/include/c++/15/bits/parse_numbers.h:
-
 /usr/include/bits/atomic_wide_counter.h:
-
-/usr/include/c++/15/bits/hash_bytes.h:
-
-/lib64/libm.so.6:
 
 /usr/include/c++/15/bits/basic_string.tcc:
 
@@ -604,15 +622,25 @@ libpipeann_original_core.a:
 
 /usr/include/bits/types/cookie_io_functions_t.h:
 
+/usr/lib64/crtn.o:
+
+/usr/include/c++/15/bits/ios_base.h:
+
 /usr/include/c++/15/sstream:
 
 /usr/include/wchar.h:
 
-/usr/include/c++/15/bits/alloc_traits.h:
-
 /usr/include/c++/15/bits/chrono.h:
 
-/usr/include/c++/15/pstl/glue_memory_defs.h:
+/usr/include/c++/15/bits/ostream.h:
+
+/usr/include/c++/15/fstream:
+
+/usr/include/c++/15/bits/ostream.tcc:
+
+libpipeann_original_core.a:
+
+/usr/include/c++/15/bits/parse_numbers.h:
 
 /usr/include/c++/15/bits/quoted_string.h:
 
@@ -710,6 +738,8 @@ libpipeann_original_core.a:
 
 /usr/include/c++/15/ext/concurrence.h:
 
+/usr/include/c++/15/bits/hashtable_policy.h:
+
 /usr/include/c++/15/ext/string_conversions.h:
 
 /usr/include/c++/15/bits/requires_hosted.h:
@@ -750,13 +780,13 @@ libpipeann_original_core.a:
 
 /usr/include/c++/15/string:
 
-/usr/lib64/gcc/x86_64-suse-linux/15/include/stdint.h:
-
 /usr/include/bits/endian.h:
 
 /usr/include/c++/15/system_error:
 
 /usr/include/c++/15/tuple:
+
+/usr/include/c++/15/unordered_map:
 
 /usr/include/c++/15/x86_64-suse-linux/bits/c++allocator.h:
 
@@ -798,6 +828,12 @@ libpipeann_original_core.a:
 
 /usr/include/stdc-predef.h:
 
+/usr/lib64/crti.o:
+
+/usr/include/bits/wordsize.h:
+
+/usr/include/stdio.h:
+
 /usr/include/stdlib.h:
 
 /usr/include/c++/15/debug/assertions.h:
@@ -813,15 +849,3 @@ libpipeann_original_core.a:
 /usr/include/sys/single_threaded.h:
 
 /usr/include/time.h:
-
-/lib64/libc.so.6:
-
-/usr/include/bits/wordsize.h:
-
-/usr/include/stdio.h:
-
-/usr/lib64/crti.o:
-
-/usr/include/c++/15/bits/ios_base.h:
-
-/usr/lib64/crtn.o:

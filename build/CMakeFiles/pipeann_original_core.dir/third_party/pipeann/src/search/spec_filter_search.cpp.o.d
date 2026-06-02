@@ -357,6 +357,7 @@ CMakeFiles/pipeann_original_core.dir/third_party/pipeann/src/search/spec_filter_
  /usr/include/bits/posix2_lim.h /usr/include/bits/xopen_lim.h \
  /usr/include/bits/uio_lim.h \
  /home/adieu/OS/project/third_party/pipeann/include/ssd_index.h \
+ /home/adieu/OS/project/third_party/pipeann/include/gorgeous_layout_adapter.h \
  /home/adieu/OS/project/third_party/pipeann/include/filter/attribute.h \
  /home/adieu/OS/project/third_party/pipeann/include/utils/picojson.h \
  /usr/include/c++/15/map /usr/include/c++/15/bits/stl_map.h \

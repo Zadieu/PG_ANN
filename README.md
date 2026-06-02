@@ -1,44 +1,26 @@
-# PipeANN x Gorgeous Hybrid
+# PipeANN + Gorgeous Layout
 
-这个项目现在不是“只做概念验证”的最小拼接仓库，而是一个已经具备完整构建、检索、检视、benchmark 与实验导出链路的 C++ 工程。
+这个仓库现在是一个更纯粹的 `PipeANN + Gorgeous layout` 工程：
 
-当前实现的核心方向是：
+- 建盘直接调用 vendored `PipeANN` 原生构建逻辑。
+- 页面布局使用 `Gorgeous` 分区结果与 relayout。
+- 搜索走 vendored `PipeANN` 的原生 `beam/page/pipe` 路径。
+- 项目内 CLI 主要保留 `build / relayout / ground_truth / bench / merge / compare`。
 
-- 以 vendored `PipeANN` 原始建盘逻辑为骨架生成磁盘索引。
-- 以 vendored `Gorgeous` 分区与 relayout 逻辑生成原生图复制布局。
-- 以项目内统一 CLI 暴露 `build / search / inspect / ground_truth / bench / compare` 工具链。
-- 以 `Gorgeous native relayout` 作为主输出格式，并保留 `graphrep` 兼容导出。
-
-## 当前状态
-
-目前仓库已经实现并验证了这些能力：
-
-- 支持从 `toy`、`text`、`fvecs`、`bvecs`、`bin` 输入建盘。
-- 默认工作流已经收拢到 `vectors -> PipeANN disk build -> Gorgeous partition -> Gorgeous relayout -> PQ artifacts`。
-- 原生索引加载以 `Gorgeous` 原始产物为主，`_partition.bin` / `_reorder.bin` 仅作为辅助 sidecar，不再是核心语义来源。
-- native full-precision payload 采用按需读取，不会在 `Load()` 时整包 materialize 到内存。
-- 搜索链路支持 `PQ` 近似距离与全精度 fallback。
-- 查询、ground truth、benchmark 都支持 `text`、`fvecs`、`bvecs`、`bin` 输入。
-- benchmark 支持 sweep、实验目录导出、结果汇总和两组实验对比。
-
-如果你想看当前构建出的目标和测试目标，直接看 `CMakeLists.txt` 即可。
+`hybrid search`、`search_backend` 分发、`search` / `inspect` 入口以及 `graphrep` 兼容导出不再是当前默认工程的一部分。
 
 ## 依赖
 
-构建依赖：
-
-- CMake >= 3.16
-- C++17 编译器
-- BLAS
-- OpenMP
+- `CMake >= 3.16`
+- `C++17`
+- `BLAS`
+- `OpenMP`
 - 可选 `libaio`
 
-项目当前会 vendored 编译：
+仓库会直接编译以下 vendored 代码：
 
 - `third_party/pipeann`
 - `third_party/gorgeous`
-
-如果系统没有 `libaio`，页读取后端会回退到 `std::async + pread` 兼容路径。
 
 ## 构建
 
@@ -48,41 +30,58 @@ cmake -S . -B build
 cmake --build build -j
 ```
 
-构建后会得到这些主要工具：
+当前默认保留的主要可执行文件：
 
 - `build/pipeann_gorgeous_build`
-- `build/pipeann_gorgeous_search`
-- `build/pipeann_gorgeous_inspect`
+- `build/pipeann_gorgeous_relayout`
 - `build/pipeann_gorgeous_ground_truth`
 - `build/pipeann_gorgeous_bench`
+- `build/pipeann_gorgeous_bench_pipeann`
 - `build/pipeann_gorgeous_bench_merge`
 - `build/pipeann_gorgeous_bench_compare`
-- `build/pipeann_gorgeous_hybrid`
 
-## 快速验证
+## 工作流
 
-可以先跑内置 toy 链路，确认构建、索引加载和搜索都通：
-
-```bash
-cd /home/adieu/OS/project
-./build/pipeann_gorgeous_hybrid
+```text
+vectors
+  -> PipeANN disk build
+  -> Gorgeous partition
+  -> Gorgeous relayout
+  -> PipeANN equal/gorgeous layout activation
+  -> PipeANN beam/page/pipe search
 ```
 
-默认会在 `sample_data/` 里生成 toy 数据的索引与 PQ 产物，并打印 `PQ` 路径和全精度路径的搜索结果。
+其中最关键的产物是：
 
-## 数据与索引格式
+- `<prefix>.bin`
+  - PipeANN 基础向量数据。
+- `<prefix>_disk.index`
+  - 当前激活中的 PipeANN 磁盘索引。
+- `<prefix>_disk.index.equal`
+  - equal layout 版本。
+- `<prefix>_disk.index.gorgeous`
+  - gorgeous layout 版本。
+- `<prefix>_partition.bin`
+  - Gorgeous GP 分区文件。
+- `<prefix>_graph_relayout.index`
+  - 独立输出的 Gorgeous relayout 索引。
+- `<prefix>_pq_pivots.bin`
+  - PipeANN PQ codebook。
+- `<prefix>_pq_compressed.bin`
+  - PipeANN PQ compressed codes。
 
-### 输入格式
+`pipeann_layout_activate` 会在 bench 前自动把 `.equal` 或 `.gorgeous` 切换到 `<prefix>_disk.index`，所以通常不需要手动复制文件。
 
-支持五种输入模式：
+## 输入格式
 
-- `--mode toy`
-- `--mode text --input /path/to/vectors.txt`
-- `--mode fvecs --input /path/to/base.fvecs`
-- `--mode bvecs --input /path/to/base.bvecs`
-- `--mode bin --input /path/to/base.bin`
+`build`、`ground_truth` 和 `bench` 支持以下向量输入格式：
 
-其中 `bin` 的格式为：
+- `text`
+- `fvecs`
+- `bvecs`
+- `bin`
+
+`bin` 格式为：
 
 ```text
 uint32_t num_points
@@ -90,350 +89,17 @@ uint32_t dim
 float payload[num_points][dim]
 ```
 
-### 构建主链
+## Build
 
-当前默认主链是：
-
-```text
-vectors
-  -> PipeANN disk build
-  -> Gorgeous partition
-  -> Gorgeous relayout
-  -> PQ artifacts
-```
-
-当前构建产物里最重要的几个文件是：
-
-- `<prefix>.bin`
-  - PipeANN 基础向量数据。
-- `<prefix>_train.bin`
-  - 可选的训练查询数据。
-- `<prefix>_disk.index`
-  - PipeANN 原始磁盘索引。
-- `<prefix>_partition.bin`
-  - Gorgeous 分区产物。
-- `<prefix>_graph_relayout.index`
-  - Gorgeous native relayout 索引，也是默认主输出。
-- `<prefix>_pq_pivots.bin`
-  - PipeANN PQ pivots。
-- `<prefix>_pq_compressed.bin`
-  - PipeANN PQ compressed codes。
-
-如果指定 `--project_compatible_output`，还会额外导出：
-
-- `<prefix>.graphrep`
-- `<prefix>.graphrep.partition`
-- `<prefix>.graphrep.reorder`
-
-## Native 与 GraphRep
-
-当前项目支持两类索引表示：
-
-- `gorgeous-native`
-  - 默认输出。
-  - 文件名通常是 `<prefix>_graph_relayout.index`。
-  - 优先直接承载原始 `Gorgeous` 页布局与元数据。
-- `project-compatible`
-  - 可选兼容导出。
-  - 文件名通常是 `<prefix>.graphrep`。
-  - 主要用于兼容旧的项目内消费方式和一些对比路径。
-
-推荐优先使用 `gorgeous-native`。
-
-## 构建 CLI
-
-建盘命令入口：
+查看帮助：
 
 ```bash
 ./build/pipeann_gorgeous_build --help
 ```
 
-最小 toy 示例：
-
-```bash
-./build/pipeann_gorgeous_build \
-  --mode toy \
-  --output_dir build_data \
-  --dataset_name toy_run
-```
-
-文本向量示例：
-
-```bash
-./build/pipeann_gorgeous_build \
-  --mode text \
-  --input data/vectors.txt \
-  --output_dir build_data \
-  --dataset_name sample \
-  --degree 16 \
-  --dense_degree 32 \
-  --r_ood 4 \
-  --build_l 128 \
-  --build_candidates 256 \
-  --build_alpha 1.2 \
-  --build_threads 8 \
-  --page_nodes 8 \
-  --pq_subspaces 4
-```
-
-常用参数：
-
-- `--degree`
-  - 总的一跳邻接预算。
-- `--dense_degree`
-  - 盘上 `DiskNode` 的稠密邻接容量。
-- `--r_ood`
-  - PipeANN refine tail 宽度。
-- `--build_l`
-  - 建图搜索列表大小。
-- `--build_candidates`
-  - alpha-RNG 剪枝候选上限。
-- `--build_alpha`
-  - alpha-RNG 剪枝参数。
-- `--build_ram_budget_gb`
-  - 构建 RAM 预算。
-- `--build_threads`
-  - 构建线程数。
-- `--page_nodes`
-  - 每个复制页最多保留多少个节点布局。
-- `--partition_scale`
-  - Gorgeous 分区 scale。
-- `--partition_ldg_times`
-  - Gorgeous 分区 LDG 迭代次数。
-- `--entry_id`
-  - 显式覆盖入口点。
-- `--pq_subspaces`
-  - PQ 子空间数，必须整除维度。
-- `--project_compatible_output`
-  - 导出 `graphrep` 兼容产物。
-- `--gorgeous_native_output`
-  - 显式要求 native 输出，当前也是默认值。
-
-构建完成后，CLI 会打印完整 artifact 路径，包括：
-
-- `pipeann_base_data=...`
-- `pipeann_train_query=...`
-- `pipeann_disk_index=...`
-- `gorgeous_partition=...`
-- `gorgeous_relayout=...`
-- `index=...`
-- `full_data=...`
-- `pipeann_pq_pivots=...`
-- `pipeann_pq_compressed=...`
-
-## 查询 CLI
-
-查询命令入口：
-
-```bash
-./build/pipeann_gorgeous_search --help
-```
-
-单条文本查询示例：
-
-```bash
-./build/pipeann_gorgeous_search \
-  --index build_data/sample_graph_relayout.index \
-  --query "0.95 0.15 0.0" \
-  --approx_kind pq \
-  --top_k 10 \
-  --beam_width 8 \
-  --l_search 64
-```
-
-从文件读取查询：
-
-```bash
-./build/pipeann_gorgeous_search \
-  --index build_data/sample_graph_relayout.index \
-  --query_file data/query.fvecs \
-  --query_format fvecs \
-  --query_index 0 \
-  --top_k 10 \
-  --beam_width 8 \
-  --l_search 64
-```
-
-说明：
-
-- `--approx_kind pq|full`
-  - 选择 `PQ` 路径或全精度路径。
-- `--approx`
-  - 可选地显式指定 full-precision 数据文件。
-- `--pq_codebook` / `--pq_codes`
-  - 可选地显式覆盖 PQ 路径；不提供时会根据索引路径自动推导。
-
-输出会包含：
-
-- `approx_backend`
-- top-k 结果
-- 聚合搜索统计，如 `reads`、`completed_pages`、`approx_evals`、`exact_evals`
-
-## 检视 CLI
-
-检视命令入口：
-
-```bash
-./build/pipeann_gorgeous_inspect --help
-```
-
 示例：
 
 ```bash
-./build/pipeann_gorgeous_inspect \
-  --index build_data/sample_graph_relayout.index \
-  --page_id 0
-```
-
-它会输出：
-
-- 通用索引元数据，如 `points`、`pages`、`dim`、`entry_id`、`page_size`
-- `storage_format`
-- native 元数据，如 `native_nodes_per_sector`、`native_range`、`native_range_dense`
-- native full-precision payload 的布局边界
-- 是否存在 `partition`、`reorder`、`pipeann refine`
-- 指定页的布局节点、base degree、dense degree
-- 可选的 PQ 元数据与文件大小
-
-## Ground Truth CLI
-
-如果只想先生成 ground truth：
-
-```bash
-./build/pipeann_gorgeous_ground_truth \
-  --index build_data/sample_graph_relayout.index \
-  --queries data/query.fvecs \
-  --query_format fvecs \
-  --top_k 10 \
-  --output results/ground_truth.txt
-```
-
-输出格式是纯文本：
-
-- 每行一条查询
-- 每行按空格分隔若干真实近邻 ID
-
-这个格式可以直接被 `bench --ground_truth` 消费。
-
-## Benchmark CLI
-
-benchmark 命令入口：
-
-```bash
-./build/pipeann_gorgeous_bench --help
-```
-
-单次 benchmark 示例：
-
-```bash
-./build/pipeann_gorgeous_bench \
-  --index build_data/sample_graph_relayout.index \
-  --queries data/query.fvecs \
-  --query_format fvecs \
-  --generate_ground_truth results/ground_truth.txt \
-  --ground_truth_k 10 \
-  --approx_kind pq \
-  --top_k 10 \
-  --beam_width 8 \
-  --l_search 64 \
-  --export results/bench.tsv \
-  --experiment_root results/experiments \
-  --experiment_name run_001
-```
-
-参数 sweep 示例：
-
-```bash
-./build/pipeann_gorgeous_bench \
-  --index build_data/sample_graph_relayout.index \
-  --queries data/query.fvecs \
-  --query_format fvecs \
-  --ground_truth results/ground_truth.txt \
-  --approx_kinds full,pq \
-  --beam_widths 4,8,16 \
-  --l_search_values 32,64,128 \
-  --top_k 10 \
-  --export results/sweep.tsv
-```
-
-`bench` 支持：
-
-- 自动生成或加载 ground truth
-- 单配置运行
-- 多组 `beam_width` / `l_search` / `approx_kind` sweep
-- 导出 TSV
-- 导出结构化实验目录
-
-实验目录中通常会包含：
-
-- `summary.tsv`
-- `manifest.txt`
-- `ground_truth.txt`
-- `runs/run_000.txt`
-
-## Bench Merge 与 Compare
-
-合并多个实验结果：
-
-```bash
-./build/pipeann_gorgeous_bench_merge \
-  --inputs results/exp_a,results/exp_b,results/single_summary.tsv \
-  --output results/all_runs.tsv
-```
-
-比较两组实验：
-
-```bash
-./build/pipeann_gorgeous_bench_compare \
-  --baseline results/exp_a \
-  --candidate results/exp_b \
-  --output results/compare.md \
-  --format markdown
-```
-
-也支持输出 TSV：
-
-```bash
-./build/pipeann_gorgeous_bench_compare \
-  --baseline results/exp_a/summary.tsv \
-  --candidate results/exp_b/summary.tsv \
-  --output results/compare.tsv \
-  --format tsv
-```
-
-## 用 SIFT1M 测试
-
-项目已经可以直接吃标准 `fvecs`，所以 `SIFT1M` 的最短路径就是：
-
-```text
-下载 sift.tar.gz
-  -> 用 sift_base.fvecs 建盘
-  -> 用 sift_query.fvecs 查询
-  -> 可选用 sift_learn.fvecs 参与训练查询输入
-```
-
-下载数据：
-
-```bash
-mkdir -p /home/adieu/OS/data/sift
-cd /home/adieu/OS/data/sift
-wget ftp://ftp.irisa.fr/local/texmex/corpus/sift.tar.gz
-tar -xzf sift.tar.gz
-```
-
-如果你使用的是 `OpenBLAS`，建议先限制 BLAS 线程，避免和 OpenMP 构建线程互相嵌套：
-
-```bash
-export OPENBLAS_NUM_THREADS=1
-export GOTO_NUM_THREADS=1
-export OMP_NUM_THREADS=8
-```
-
-建索引：
-
-```bash
-cd /home/adieu/OS/project
-
 ./build/pipeann_gorgeous_build \
   --mode fvecs \
   --input /home/adieu/OS/data/sift/sift/sift_base.fvecs \
@@ -444,136 +110,191 @@ cd /home/adieu/OS/project
   --degree 32 \
   --dense_degree 64 \
   --build_l 128 \
-  --build_threads 8 \
   --build_ram_budget_gb 16 \
+  --build_threads 8 \
   --page_nodes 8 \
+  --partition_scale 0 \
+  --partition_ldg_times 4 \
   --pq_subspaces 16
 ```
 
-单条查询：
+常用参数：
+
+- `--mode text|fvecs|bvecs|bin`
+- `--input PATH`
+- `--train_query_mode` / `--train_query_path`
+- `--degree` / `--dense_degree`
+- `--r_ood` / `--l_ood`
+- `--build_l` / `--build_ram_budget_gb` / `--build_threads`
+- `--page_nodes` / `--partition_scale` / `--partition_ldg_times`
+- `--entry_id`
+- `--pq_subspaces` / `--pq_centroids` / `--pq_iterations`
+
+构建完成后会打印这些关键路径：
+
+- `pipeann_index_prefix`
+- `pipeann_disk_index`
+- `pipeann_equal_layout`
+- `pipeann_gorgeous_layout`
+- `gorgeous_partition`
+- `gorgeous_relayout`
+- `pipeann_pq_pivots`
+- `pipeann_pq_compressed`
+
+## Relayout
+
+`build` 已经会自动产出 gorgeous relayout 结果；`relayout` 入口主要用于把已有的 PipeANN equal-layout 索引配合现成 GP 分区文件重新生成 gorgeous layout。
+
+查看帮助：
 
 ```bash
-./build/pipeann_gorgeous_search \
-  --index /home/adieu/OS/data/sift/out/sift1m_graph_relayout.index \
-  --query_file /home/adieu/OS/data/sift/sift/sift_query.fvecs \
-  --query_format fvecs \
-  --query_index 0 \
-  --top_k 10 \
-  --beam_width 8 \
-  --l_search 64 \
-  --approx_kind pq
+./build/pipeann_gorgeous_relayout --help
 ```
 
-批量 benchmark：
+示例：
 
 ```bash
-mkdir -p /home/adieu/OS/data/sift/results
+./build/pipeann_gorgeous_relayout \
+  --disk_index /home/adieu/OS/data/sift/out/sift1m_disk.index.equal \
+  --partition /home/adieu/OS/data/sift/out/sift1m_partition.bin \
+  --output /home/adieu/OS/data/sift/out/sift1m_disk.index.gorgeous
+```
 
+## Ground Truth
+
+查看帮助：
+
+```bash
+./build/pipeann_gorgeous_ground_truth --help
+```
+
+示例：
+
+```bash
+./build/pipeann_gorgeous_ground_truth \
+  --index_prefix /home/adieu/OS/data/sift/out/sift1m \
+  --queries /home/adieu/OS/data/sift/sift/sift_query.fvecs \
+  --query_format fvecs \
+  --top_k 10 \
+  --output /home/adieu/OS/data/sift/results/ground_truth.txt
+```
+
+这里的 `--index_prefix` 指向 workflow 前缀，例如 `.../sift1m`。默认 exact ground truth 会直接读取 `<prefix>.bin`；如果基础向量数据另有位置，可以通过 `--approx PATH` 覆盖。
+
+## Bench
+
+查看帮助：
+
+```bash
+./build/pipeann_gorgeous_bench --help
+```
+
+单次 bench：
+
+```bash
 ./build/pipeann_gorgeous_bench \
-  --index /home/adieu/OS/data/sift/out/sift1m_graph_relayout.index \
+  --index_prefix /home/adieu/OS/data/sift/out/sift1m \
+  --pipeann_layout gorgeous \
+  --gp_partition /home/adieu/OS/data/sift/out/sift1m_partition.bin \
+  --pipeann_mode 2 \
   --queries /home/adieu/OS/data/sift/sift/sift_query.fvecs \
   --query_format fvecs \
   --generate_ground_truth /home/adieu/OS/data/sift/results/ground_truth.txt \
   --ground_truth_k 10 \
   --top_k 10 \
   --beam_width 8 \
-  --l_search 64 \
-  --approx_kind pq \
-  --export /home/adieu/OS/data/sift/results/bench.tsv
+  --l_search 20 \
+  --threads 1 \
+  --mem_l 0 \
+  --export /home/adieu/OS/data/sift/results/pipeann_summary.tsv
 ```
 
-## 测试
-
-当前仓库内已经接入这些测试目标：
-
-- `pipeann_gorgeous_search_test`
-- `pipeann_gorgeous_build_test`
-- `pipeann_gorgeous_tool_cli_test`
-- `pipeann_gorgeous_integration_test`
-
-运行方式：
+sweep 示例：
 
 ```bash
-cd /home/adieu/OS/project
-ctest --test-dir build --output-on-failure
+./build/pipeann_gorgeous_bench \
+  --index_prefix /home/adieu/OS/data/sift/out/sift1m \
+  --queries /home/adieu/OS/data/sift/sift/sift_query.fvecs \
+  --query_format fvecs \
+  --ground_truth /home/adieu/OS/data/sift/results/ground_truth.txt \
+  --top_k 10 \
+  --beam_widths 4,8,16 \
+  --l_search_values 16,20,32 \
+  --thread_counts 1,8 \
+  --pipeann_modes 0,1,2 \
+  --pipeann_layouts equal,gorgeous \
+  --export /home/adieu/OS/data/sift/results/pipeann_sweep.tsv
 ```
 
-如果只想跑单个测试，也可以直接执行对应二进制。
+参数说明：
+
+- `--index_prefix`
+  - 指向 PipeANN workflow 前缀，实际使用 `<prefix>_disk.index*`、`<prefix>_partition.bin`、`<prefix>.bin`。
+- `--pipeann_layout equal|gorgeous`
+  - 指定 bench 前激活哪一种 layout。
+- `--gp_partition PATH`
+  - gorgeous 模式下显式指定分区文件；不传时默认推导为 `<prefix>_partition.bin`。
+- `--pipeann_mode 0|1|2`
+  - 分别对应 `beam / page / pipe`。
+- `--mem_l`
+  - 与 PipeANN `MEML0` 语义对齐。
+
+导出的 TSV 列为：
+
+```text
+scale layout mode threads beam mem_l L qps avg_lat_us p99_lat_us mean_hops mean_ios unique_pg_io dup_pg_hit polls recall_at_k log
+```
+
+## Standalone Bench
+
+`pipeann_gorgeous_bench_pipeann` 提供单次运行入口，参数风格更接近 PipeANN 原生命令，适合调试、性能对齐和 `strace`。
+
+```bash
+./build/pipeann_gorgeous_bench_pipeann \
+  --index_prefix /home/adieu/OS/data/sift/out/sift1m \
+  --layout gorgeous \
+  --gp_partition /home/adieu/OS/data/sift/out/sift1m_partition.bin \
+  --mode 2 \
+  --queries /home/adieu/OS/data/sift/sift/sift_query.fvecs \
+  --query_format fvecs \
+  --ground_truth /home/adieu/OS/data/sift/results/ground_truth.txt \
+  --ground_truth_k 10 \
+  --top_k 10 \
+  --beamwidth 8 \
+  --L 20 \
+  --threads 1 \
+  --mem_L 0
+```
+
+## Merge And Compare
+
+合并多个 summary：
+
+```bash
+./build/pipeann_gorgeous_bench_merge \
+  --inputs results/run_a.tsv,results/run_b.tsv \
+  --output results/all.tsv
+```
+
+比较两组实验：
+
+```bash
+./build/pipeann_gorgeous_bench_compare \
+  --baseline results/baseline.tsv \
+  --candidate results/gorgeous.tsv \
+  --output results/compare.md \
+  --format markdown
+```
+
+也支持 `--format tsv`。
 
 ## 目录概览
 
 - `include/`
-  - 项目公开头文件。
 - `src/`
-  - 项目实现与各 CLI 入口。
 - `tests/`
-  - 构建、搜索、CLI、集成测试。
 - `third_party/pipeann/`
-  - vendored PipeANN 源码。
 - `third_party/gorgeous/`
-  - vendored Gorgeous 源码。
 - `docs/`
-  - 路线图和其他设计文档。
 
-## 后续文档
-
-如果你想看项目后续演进方向，优先参考：
-
-- [路线图](file:///home/adieu/OS/project/docs/ROADMAP.md)
-
-这份 README 主要描述“当前已经能做什么、应该怎么用”；更细的演进计划放在 `docs/` 中维护。
-
-## Graph Cache and Refinement Options
-
-The search and bench CLIs support `--graph_cache_bytes N` plus
-`--graph_cache_policy entry_bfs|page_layout`. Bench also supports
-`--graph_cache_bytes_values v1,v2,...` and
-`--graph_cache_policies entry_bfs,page_layout` for sweeps. A non-zero budget
-builds a Gorgeous-style adjacency-only graph cache. `entry_bfs` follows the
-entry neighborhood; `page_layout` admits nodes in physical page-layout order.
-Query execution expands cache hits without issuing a page read.
-
-The refinement stage can be controlled with `--refine_k N`,
-`--refine_ratio F`, and `--defer_exact_until_refinement`. Bench sweep variants
-are `--refine_k_values`, `--refine_ratio_values`, and
-`--defer_exact_values`. Defaults preserve the previous behavior: exact vectors
-are evaluated during page expansion when available and the final refinement
-bound is `l_pool`.
-
-Scheduler behavior is controlled by
-`--scheduler_policy conservative|bounded|aggressive`,
-`--scheduler_policy_limit N`, and `--dynamic_beam_policy adaptive|fixed`.
-Bench variants are `--scheduler_policies`,
-`--scheduler_policy_limit_values`, and `--dynamic_beam_policies`. The exported
-M4 counters include the observed pending-work bound:
-`scheduler_policy_limit_observed`, `scheduler_pending_max`,
-`scheduler_ready_unexpanded_max`, and `scheduler_limit_hits`.
-
-Example small M2-M4 sweep:
-
-```bash
-./build/pipeann_gorgeous_bench \
-  --index build_data/sample_graph_relayout.index \
-  --queries data/query.fvecs \
-  --query_format fvecs \
-  --ground_truth results/ground_truth.txt \
-  --top_k 10 \
-  --approx_kinds full,pq \
-  --beam_widths 4,8 \
-  --l_search_values 32,64 \
-  --graph_cache_bytes_values 0,1048576 \
-  --graph_cache_policies entry_bfs,page_layout \
-  --refine_k_values 10,32 \
-  --defer_exact_values 0,1 \
-  --scheduler_policies conservative,bounded \
-  --dynamic_beam_policies adaptive,fixed \
-  --experiment_root results/experiments \
-  --experiment_name m2_m4_sweep
-```
-
-Relevant exported counters include `graph_cache_hits`,
-`graph_cache_misses`, `graph_cache_avoided_reads`,
-`graph_cache_resident_bytes`, `graph_cache_entries`, `bytes_read`,
-`graph_replicated_hits`, `refinement_reads`, `refinement_bound`,
-`refinement_exactified`, `deferred_exact_candidates`, `scheduler_pending_max`,
-and `scheduler_limit_hits`.
+`tests/` 目录仍保留在工作区中，但不再接入当前默认构建。

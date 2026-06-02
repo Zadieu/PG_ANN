@@ -373,6 +373,7 @@ CMakeFiles/pipeann_original_core.dir/third_party/pipeann/src/update/delete_merge
  /home/adieu/OS/project/third_party/pipeann/include/nbr/rabitq_nbr.h \
  /home/adieu/OS/project/third_party/pipeann/include/distance.h \
  /home/adieu/OS/project/third_party/pipeann/include/ssd_index.h \
+ /home/adieu/OS/project/third_party/pipeann/include/gorgeous_layout_adapter.h \
  /home/adieu/OS/project/third_party/pipeann/include/filter/attribute.h \
  /home/adieu/OS/project/third_party/pipeann/include/utils/picojson.h \
  /usr/include/c++/15/map /usr/include/c++/15/bits/stl_map.h \

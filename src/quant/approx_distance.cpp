@@ -15,7 +15,6 @@ namespace {
 
 constexpr uint64_t kProductQuantizationMagic = 0x4859425051303031ULL;
 constexpr uint32_t kProductQuantizationVersion = 1;
-
 template <typename T>
 void WriteBinary(std::ofstream &out, const T &value) {
   out.write(reinterpret_cast<const char *>(&value), sizeof(T));

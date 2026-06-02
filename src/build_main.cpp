@@ -9,7 +9,7 @@ namespace {
 void PrintUsage() {
   std::cout
       << "Usage: pipeann_gorgeous_build [options]\n"
-      << "  --mode toy|text|fvecs|bvecs|bin\n"
+      << "  --mode text|fvecs|bvecs|bin\n"
       << "  --input PATH\n"
       << "  --train_query_mode text|fvecs|bvecs|bin\n"
       << "  --train_query_path PATH\n"
@@ -25,13 +25,10 @@ void PrintUsage() {
       << "  --page_nodes N\n"
       << "  --partition_scale N\n"
       << "  --partition_ldg_times N\n"
-      << "  --project_compatible_output\n"
-      << "  --gorgeous_native_output\n"
       << "  --entry_id N\n"
       << "  --pq_subspaces N\n"
       << "  --pq_centroids N\n"
       << "  --pq_iterations N\n"
-      << "  --toy_points N\n"
       << "  --help\n";
 }
 
@@ -68,9 +65,7 @@ hybrid::BuildConfig ParseArgs(int argc, char **argv) {
     }
     if (arg == "--mode") {
       const std::string value = need_value("--mode");
-      if (value == "toy") {
-        config.input_mode = hybrid::VectorInputMode::kToy;
-      } else if (value == "text") {
+      if (value == "text") {
         config.input_mode = hybrid::VectorInputMode::kText;
       } else if (value == "fvecs") {
         config.input_mode = hybrid::VectorInputMode::kFvecs;
@@ -162,14 +157,6 @@ hybrid::BuildConfig ParseArgs(int argc, char **argv) {
       config.partition_ldg_times = ParseUint32("--partition_ldg_times", need_value("--partition_ldg_times"));
       continue;
     }
-    if (arg == "--project_compatible_output") {
-      config.output_mode = hybrid::BuildOutputMode::kProjectCompatible;
-      continue;
-    }
-    if (arg == "--gorgeous_native_output") {
-      config.output_mode = hybrid::BuildOutputMode::kGorgeousNative;
-      continue;
-    }
     if (arg == "--entry_id") {
       config.use_explicit_entry_id = true;
       config.entry_id = ParseUint32("--entry_id", need_value("--entry_id"));
@@ -185,10 +172,6 @@ hybrid::BuildConfig ParseArgs(int argc, char **argv) {
     }
     if (arg == "--pq_iterations") {
       config.pq_iterations = ParseUint32("--pq_iterations", need_value("--pq_iterations"));
-      continue;
-    }
-    if (arg == "--toy_points") {
-      config.toy_points = ParseUint32("--toy_points", need_value("--toy_points"));
       continue;
     }
     throw std::runtime_error("unknown argument: " + arg);
@@ -207,11 +190,7 @@ int main(int argc, char **argv) {
     std::cout << "  builder=pipeann_original\n";
     std::cout << "  points=" << artifacts.num_points << '\n';
     std::cout << "  dim=" << artifacts.dim << '\n';
-    std::cout << "  output_mode="
-              << (artifacts.output_mode == hybrid::BuildOutputMode::kProjectCompatible
-                      ? "project-compatible"
-                      : "gorgeous-native")
-              << '\n';
+    std::cout << "  engine=pipeann_gorgeous_layout\n";
     std::cout << "  r_ood=" << config.r_ood << '\n';
     std::cout << "  build_n_cmps=" << artifacts.pipeann_build_stats.n_cmps << '\n';
     std::cout << "  build_n_prunes=" << artifacts.pipeann_build_stats.n_prunes << '\n';
@@ -230,11 +209,10 @@ int main(int argc, char **argv) {
     }
     std::cout << "  pipeann_index_prefix=" << artifacts.pipeann_index_prefix << '\n';
     std::cout << "  pipeann_disk_index=" << artifacts.raw_disk_index_path << '\n';
+    std::cout << "  pipeann_equal_layout=" << artifacts.pipeann_equal_layout_path << '\n';
+    std::cout << "  pipeann_gorgeous_layout=" << artifacts.pipeann_gorgeous_layout_path << '\n';
     std::cout << "  gorgeous_partition=" << artifacts.gorgeous_partition_bin_path << '\n';
     std::cout << "  gorgeous_relayout=" << artifacts.gorgeous_relayout_index_path << '\n';
-    std::cout << "  index=" << artifacts.index_path << '\n';
-    std::cout << "  partition=" << artifacts.partition_path << '\n';
-    std::cout << "  reorder=" << artifacts.reorder_path << '\n';
     if (!artifacts.pipeann_refine_sidecar_path.empty()) {
       std::cout << "  pipeann_refine_sidecar=" << artifacts.pipeann_refine_sidecar_path << '\n';
       std::cout << "  pipeann_refine_manifest=" << artifacts.pipeann_refine_manifest_path << '\n';

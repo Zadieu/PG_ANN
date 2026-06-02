@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <fstream>
+#include <limits>
 #include <memory>
 #include <string>
 #include <vector>
@@ -158,6 +159,18 @@ class NativeGorgeousIndex : public IndexReader {
  public:
   void Load(const std::string &index_path, const std::string &approx_path);
 
+  struct ThreadLocalContext {
+    mutable std::ifstream approx_vector_stream;
+    mutable std::vector<float> approx_vector_cache;
+    mutable uint32_t approx_vector_cache_id = std::numeric_limits<uint32_t>::max();
+
+    mutable std::ifstream exact_vector_stream;
+    mutable std::vector<float> exact_vector_cache;
+    mutable uint32_t exact_vector_cache_id = std::numeric_limits<uint32_t>::max();
+  };
+
+  ThreadLocalContext &GetThreadContext() const;
+
   const gorgeous_integration::DiskIndexMetadata &native_metadata() const { return native_metadata_; }
   const NativePayloadInfo &payload_info() const { return payload_info_; }
   const std::vector<uint64_t> &page_boundaries() const { return page_boundaries_; }
@@ -185,7 +198,7 @@ class NativeGorgeousIndex : public IndexReader {
   const std::vector<uint32_t> &reorder_ids() const override { return reorder_ids_; }
 
  private:
-  void ReadPayloadVector(uint32_t id, std::vector<float> *out) const;
+  void ReadPayloadVector(uint32_t id, std::ifstream *stream, std::vector<float> *out) const;
   void ReadBinVector(const std::string &path, std::ifstream *stream, uint32_t id, std::vector<float> *out) const;
 
   SearchIndexMetadata search_metadata_{};
@@ -203,12 +216,6 @@ class NativeGorgeousIndex : public IndexReader {
   std::vector<std::vector<uint32_t>> page_layouts_;
   std::vector<uint64_t> reorder_offsets_;
   std::vector<uint32_t> reorder_ids_;
-  mutable std::ifstream approx_vector_stream_;
-  mutable std::ifstream exact_vector_stream_;
-  mutable std::vector<float> approx_vector_cache_;
-  mutable std::vector<float> exact_vector_cache_;
-  mutable uint32_t approx_vector_cache_id_ = UINT32_MAX;
-  mutable uint32_t exact_vector_cache_id_ = UINT32_MAX;
 };
 
 std::unique_ptr<IndexReader> LoadIndexReader(const std::string &index_path, const std::string &approx_path);

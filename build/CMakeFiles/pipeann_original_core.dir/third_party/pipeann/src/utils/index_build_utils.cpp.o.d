@@ -387,6 +387,7 @@ CMakeFiles/pipeann_original_core.dir/third_party/pipeann/src/utils/index_build_u
  /home/adieu/OS/project/third_party/pipeann/include/distance.h \
  /home/adieu/OS/project/third_party/pipeann/include/utils/pipnn.h \
  /home/adieu/OS/project/third_party/pipeann/include/ssd_index.h \
+ /home/adieu/OS/project/third_party/pipeann/include/gorgeous_layout_adapter.h \
  /home/adieu/OS/project/third_party/pipeann/include/filter/attribute.h \
  /home/adieu/OS/project/third_party/pipeann/include/filter/selector.h \
  /home/adieu/OS/project/third_party/pipeann/include/filter/attribute.h \

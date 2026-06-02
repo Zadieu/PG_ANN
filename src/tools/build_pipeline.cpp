@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <cmath>
-#include <cstring>
 #include <deque>
 #include <filesystem>
 #include <fstream>
@@ -15,19 +14,15 @@
 #include <unordered_set>
 #include <utility>
 
-#include "gorgeous_layout.h"
 #include "integrations/disk_index_relayout.h"
 #include "integrations/gorgeous_original.h"
 #include "integrations/pipeann_builder.h"
-#include "quant/approx_distance.h"
 
 namespace hybrid {
 
 namespace {
 
 constexpr uint64_t kIntegratedSectorLen = 4096;
-constexpr uint64_t kGraphReplicatedMagic = 0x4859425249443031ULL;
-constexpr uint32_t kGraphReplicatedVersion = 4;
 
 std::string DefaultWorkflowBaseDataPath(const std::filesystem::path &base) {
   return base.string() + ".bin";
@@ -82,25 +77,28 @@ void ValidateConfig(const BuildConfig &config) {
   if (config.pq_subspaces == 0 || config.pq_centroids == 0 || config.pq_iterations == 0) {
     throw std::runtime_error("PQ parameters must be positive");
   }
-  if ((config.input_mode == VectorInputMode::kText ||
-       config.input_mode == VectorInputMode::kFvecs ||
-       config.input_mode == VectorInputMode::kBvecs ||
-       config.input_mode == VectorInputMode::kBin) &&
-      config.input_path.empty()) {
+  if (config.input_path.empty()) {
     throw std::runtime_error("input_path must be provided in text input mode");
-  }
-  if (config.input_mode == VectorInputMode::kToy && config.toy_points == 0) {
-    throw std::runtime_error("toy_points must be positive in toy input mode");
   }
   if (config.l_ood == 0) {
     throw std::runtime_error("l_ood must be positive");
   }
 }
 
+float SquaredL2Distance(const std::vector<float> &lhs, const std::vector<float> &rhs) {
+  if (lhs.size() != rhs.size()) {
+    throw std::runtime_error("dimension mismatch in L2Distance");
+  }
+  float sum = 0.0f;
+  for (size_t i = 0; i < lhs.size(); ++i) {
+    const float diff = lhs[i] - rhs[i];
+    sum += diff * diff;
+  }
+  return sum;
+}
+
 std::vector<std::vector<float>> LoadVectors(const BuildConfig &config) {
   switch (config.input_mode) {
-    case VectorInputMode::kToy:
-      return GenerateToyVectors(config.toy_points);
     case VectorInputMode::kText:
       return LoadTextVectors(config.input_path);
     case VectorInputMode::kFvecs:
@@ -115,8 +113,6 @@ std::vector<std::vector<float>> LoadVectors(const BuildConfig &config) {
 
 std::vector<std::vector<float>> LoadVectorsByMode(VectorInputMode mode, const std::string &path) {
   switch (mode) {
-    case VectorInputMode::kToy:
-      throw std::runtime_error("toy mode is not supported for train queries");
     case VectorInputMode::kText:
       return LoadTextVectors(path);
     case VectorInputMode::kFvecs:
@@ -127,6 +123,16 @@ std::vector<std::vector<float>> LoadVectorsByMode(VectorInputMode mode, const st
       return LoadBinVectors(path);
   }
   throw std::runtime_error("unsupported vector input mode");
+}
+
+void CopyFileOrThrow(const std::string &from, const std::string &to) {
+  const std::filesystem::path from_path(from);
+  const std::filesystem::path to_path(to);
+  std::error_code ec;
+  std::filesystem::copy_file(from_path, to_path, std::filesystem::copy_options::overwrite_existing, ec);
+  if (ec) {
+    throw std::runtime_error("failed to copy file from " + from + " to " + to);
+  }
 }
 
 template <typename T>
@@ -152,14 +158,6 @@ void WriteBytes(std::ofstream &out, const void *data, size_t size) {
   }
 }
 
-uint32_t MaxPageNodes(const std::vector<std::vector<uint32_t>> &layouts) {
-  uint32_t max_page_nodes = 0;
-  for (const auto &layout : layouts) {
-    max_page_nodes = std::max<uint32_t>(max_page_nodes, static_cast<uint32_t>(layout.size()));
-  }
-  return max_page_nodes;
-}
-
 void WriteBinVectors(const std::string &path, const std::vector<std::vector<float>> &vectors) {
   std::ofstream out(path, std::ios::binary | std::ios::trunc);
   if (!out) {
@@ -174,107 +172,6 @@ void WriteBinVectors(const std::string &path, const std::vector<std::vector<floa
       throw std::runtime_error("PipeANN build input vectors have inconsistent dimensions");
     }
     WriteBytes(out, vec.data(), vec.size() * sizeof(float));
-  }
-}
-
-void WriteGraphReplicatedIndexFromRelayout(const std::string &index_path,
-                                           const std::string &relayout_index_path,
-                                           const std::vector<std::vector<float>> &vectors,
-                                           const std::vector<std::vector<uint32_t>> &layouts,
-                                           uint32_t entry_id,
-                                           uint32_t page_size) {
-  const gorgeous_integration::DiskIndexMetadata relayout_metadata =
-      gorgeous_integration::ReadDiskIndexMetadata(relayout_index_path);
-  GraphReplicatedMetadata metadata{};
-  metadata.magic = kGraphReplicatedMagic;
-  metadata.version = kGraphReplicatedVersion;
-  metadata.dim = static_cast<uint32_t>(vectors.front().size());
-  metadata.num_points = static_cast<uint32_t>(vectors.size());
-  metadata.num_pages = static_cast<uint32_t>(layouts.size());
-  metadata.max_degree = static_cast<uint32_t>(relayout_metadata.range_dense);
-  metadata.max_base_degree = metadata.max_degree;
-  metadata.max_page_nodes = MaxPageNodes(layouts);
-  metadata.entry_id = entry_id;
-  metadata.page_size = page_size;
-
-  const uint64_t expected_size =
-      static_cast<uint64_t>(metadata.num_pages + 1) * static_cast<uint64_t>(page_size);
-  if (std::filesystem::file_size(relayout_index_path) != expected_size) {
-    throw std::runtime_error("relayout output size does not match graph replicated page sizing");
-  }
-
-  std::ifstream relayout_in(relayout_index_path, std::ios::binary);
-  if (!relayout_in) {
-    throw std::runtime_error("failed to open relayout index file");
-  }
-  relayout_in.seekg(static_cast<std::streamoff>(page_size), std::ios::beg);
-
-  std::ofstream index_out(index_path, std::ios::binary | std::ios::trunc);
-  if (!index_out) {
-    throw std::runtime_error("failed to open graph replicated index output file");
-  }
-
-  std::vector<char> header(page_size, 0);
-  std::memcpy(header.data(), &metadata, sizeof(metadata));
-  WriteBytes(index_out, header.data(), header.size());
-
-  std::vector<char> relayout_page(page_size, 0);
-  std::vector<char> graphrep_page(page_size, 0);
-  for (uint32_t page_id = 0; page_id < metadata.num_pages; ++page_id) {
-    relayout_in.read(relayout_page.data(), static_cast<std::streamsize>(relayout_page.size()));
-    if (!relayout_in) {
-      throw std::runtime_error("failed to read relayout page while creating graphrep index");
-    }
-
-    std::fill(graphrep_page.begin(), graphrep_page.end(), 0);
-
-    size_t relayout_cursor = metadata.dim * sizeof(float);
-    uint32_t layout_size = 0;
-    std::memcpy(&layout_size, relayout_page.data() + relayout_cursor, sizeof(layout_size));
-    if (layout_size == 0 || layout_size > metadata.max_page_nodes) {
-      throw std::runtime_error("relayout page layout size exceeds graphrep metadata bounds");
-    }
-
-    relayout_cursor += sizeof(layout_size);
-    std::vector<uint32_t> layout(layout_size);
-    std::memcpy(layout.data(), relayout_page.data() + relayout_cursor, layout_size * sizeof(uint32_t));
-    if (layout != layouts[page_id]) {
-      throw std::runtime_error("relayout page layout does not match build pipeline layout");
-    }
-    relayout_cursor += static_cast<size_t>(metadata.max_page_nodes) * sizeof(uint32_t);
-
-    size_t graphrep_cursor = 0;
-    std::memcpy(graphrep_page.data() + graphrep_cursor, &layout_size, sizeof(layout_size));
-    graphrep_cursor += sizeof(layout_size);
-    std::memcpy(graphrep_page.data() + graphrep_cursor, layout.data(), layout.size() * sizeof(uint32_t));
-    graphrep_cursor += static_cast<size_t>(metadata.max_page_nodes) * sizeof(uint32_t);
-
-    for (uint32_t slot = 0; slot < metadata.max_page_nodes; ++slot) {
-      if (slot < layout_size) {
-        std::memcpy(graphrep_page.data() + graphrep_cursor,
-                    vectors[layout[slot]].data(),
-                    static_cast<size_t>(metadata.dim) * sizeof(float));
-      }
-      graphrep_cursor += static_cast<size_t>(metadata.dim) * sizeof(float);
-
-      uint32_t degree = 0;
-      std::memcpy(&degree, relayout_page.data() + relayout_cursor, sizeof(degree));
-      if (degree > metadata.max_degree) {
-        throw std::runtime_error("relayout graph block degree exceeds graphrep metadata bounds");
-      }
-      const uint16_t base_degree = static_cast<uint16_t>(degree);
-      const uint16_t dense_degree = 0;
-      std::memcpy(graphrep_page.data() + graphrep_cursor, &base_degree, sizeof(base_degree));
-      std::memcpy(graphrep_page.data() + graphrep_cursor + sizeof(uint16_t), &dense_degree, sizeof(dense_degree));
-      if (degree > 0) {
-        std::memcpy(graphrep_page.data() + graphrep_cursor + sizeof(uint32_t),
-                    relayout_page.data() + relayout_cursor + sizeof(uint32_t),
-                    static_cast<size_t>(degree) * sizeof(uint32_t));
-      }
-      relayout_cursor += sizeof(uint32_t) + static_cast<size_t>(metadata.max_degree) * sizeof(uint32_t);
-      graphrep_cursor += sizeof(uint32_t) + static_cast<size_t>(metadata.max_degree) * sizeof(uint32_t);
-    }
-    WriteBytes(index_out, graphrep_page.data(), graphrep_page.size());
   }
 }
 
@@ -396,17 +293,6 @@ std::vector<std::vector<float>> LoadBinVectors(const std::string &path) {
   return vectors;
 }
 
-std::vector<std::vector<float>> GenerateToyVectors(uint32_t num_points) {
-  std::vector<std::vector<float>> vectors;
-  vectors.reserve(num_points);
-  constexpr float kPi = 3.14159265358979323846f;
-  for (uint32_t i = 0; i < num_points; ++i) {
-    const float angle = 2.0f * kPi * static_cast<float>(i) / static_cast<float>(num_points);
-    vectors.push_back({std::cos(angle), std::sin(angle), static_cast<float>(i) / 10.0f});
-  }
-  return vectors;
-}
-
 std::vector<std::vector<uint32_t>> BuildKnnGraph(const std::vector<std::vector<float>> &vectors, uint32_t degree) {
   if (vectors.empty()) {
     throw std::runtime_error("vectors must not be empty");
@@ -419,7 +305,7 @@ std::vector<std::vector<uint32_t>> BuildKnnGraph(const std::vector<std::vector<f
       if (id == other) {
         continue;
       }
-      neighbors.push_back({L2Distance(vectors[id], vectors[other]), other});
+      neighbors.push_back({SquaredL2Distance(vectors[id], vectors[other]), other});
     }
     std::sort(neighbors.begin(), neighbors.end());
     for (uint32_t i = 0; i < degree && i < neighbors.size(); ++i) {
@@ -802,6 +688,8 @@ BuildArtifacts RunBuildPipeline(const BuildConfig &config) {
   const uint32_t entry_id = build_result.entry_id;
   const std::string gorgeous_partition_path = DefaultWorkflowGorgeousPartitionPath(base);
   const std::string gorgeous_relayout_path = DefaultWorkflowGorgeousRelayoutPath(base);
+  const std::string pipeann_equal_layout_path = build_result.disk_index_path + ".equal";
+  const std::string pipeann_gorgeous_layout_path = build_result.disk_index_path + ".gorgeous";
   const std::vector<std::vector<uint32_t>> flattened_graph =
       pipeann_integration::LoadPipeannFlatGraph(build_result.disk_index_path);
   const gorgeous_integration::GorgeousOriginalPartitionResult gorgeous_result =
@@ -817,8 +705,10 @@ BuildArtifacts RunBuildPipeline(const BuildConfig &config) {
   const pipeann_integration::PipeannPQBuildResult pq_result =
       pipeann_integration::BuildPipeannPQArtifacts(builder_base_bin, base.string(), config.pq_subspaces);
 
+  CopyFileOrThrow(build_result.disk_index_path, pipeann_equal_layout_path);
+  CopyFileOrThrow(gorgeous_relayout_path, pipeann_gorgeous_layout_path);
+
   BuildArtifacts artifacts;
-  artifacts.output_mode = config.output_mode;
   artifacts.workflow_prefix = base.string();
   artifacts.pipeann_base_data_path = builder_base_bin;
   artifacts.pipeann_train_query_path = train_queries.empty() ? std::string() : builder_train_bin;
@@ -826,18 +716,8 @@ BuildArtifacts RunBuildPipeline(const BuildConfig &config) {
   artifacts.gorgeous_partition_bin_path = gorgeous_partition_path;
   artifacts.gorgeous_relayout_index_path = gorgeous_relayout_path;
   artifacts.raw_disk_index_path = build_result.disk_index_path;
-  artifacts.has_project_compatible_export = config.output_mode == BuildOutputMode::kProjectCompatible;
-  if (config.output_mode == BuildOutputMode::kProjectCompatible) {
-    artifacts.relayout_index_path = gorgeous_relayout_path;
-    artifacts.index_path = (base.string() + ".graphrep");
-    artifacts.partition_path = DefaultPartitionSidecarPath(artifacts.index_path);
-    artifacts.reorder_path = DefaultReorderSidecarPath(artifacts.index_path);
-  } else {
-    artifacts.relayout_index_path = gorgeous_relayout_path;
-    artifacts.index_path = artifacts.relayout_index_path;
-    artifacts.partition_path = gorgeous_partition_path;
-    artifacts.reorder_path = DefaultGorgeousReorderSidecarPath(artifacts.index_path);
-  }
+  artifacts.pipeann_equal_layout_path = pipeann_equal_layout_path;
+  artifacts.pipeann_gorgeous_layout_path = pipeann_gorgeous_layout_path;
   artifacts.approx_path = builder_base_bin;
   artifacts.pq_codebook_path = pq_result.pivots_path;
   artifacts.pq_codes_path = pq_result.compressed_path;
@@ -847,25 +727,9 @@ BuildArtifacts RunBuildPipeline(const BuildConfig &config) {
   artifacts.pipeann_refine_sidecar_path.clear();
   artifacts.pipeann_refine_manifest_path.clear();
   artifacts.pipeann_refine_nodes_path.clear();
-  std::filesystem::remove(pipeann_integration::DefaultPipeannRefineSidecarPath(artifacts.index_path));
-  std::filesystem::remove(artifacts.index_path + ".pipeann.refine.txt");
-  std::filesystem::remove(artifacts.index_path + ".pipeann.refine.nodes.tsv");
-
-  if (config.output_mode == BuildOutputMode::kProjectCompatible) {
-    WriteGraphReplicatedIndexFromRelayout(
-        artifacts.index_path,
-        artifacts.relayout_index_path,
-        vectors,
-        gorgeous_result.layouts,
-        entry_id,
-        static_cast<uint32_t>(kIntegratedSectorLen));
-    WriteGorgeousPartitionSidecar(artifacts.partition_path,
-                                  gorgeous_result.page_capacity,
-                                  static_cast<uint32_t>(vectors.size()),
-                                  gorgeous_result.layouts,
-                                  &gorgeous_result.id_to_page);
-  }
-  WriteGorgeousReorderSidecar(artifacts.reorder_path, gorgeous_result.layouts);
+  std::filesystem::remove(pipeann_integration::DefaultPipeannRefineSidecarPath(artifacts.raw_disk_index_path));
+  std::filesystem::remove(artifacts.raw_disk_index_path + ".pipeann.refine.txt");
+  std::filesystem::remove(artifacts.raw_disk_index_path + ".pipeann.refine.nodes.tsv");
   return artifacts;
 }
 

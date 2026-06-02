@@ -361,6 +361,7 @@ CMakeFiles/pipeann_original_core.dir/third_party/pipeann/src/ssd_index.cpp.o: \
  /usr/include/c++/15/chrono /usr/include/c++/15/shared_mutex \
  /home/adieu/OS/project/third_party/pipeann/include/utils/log.h \
  /home/adieu/OS/project/third_party/pipeann/include/ssd_index.h \
+ /home/adieu/OS/project/third_party/pipeann/include/gorgeous_layout_adapter.h \
  /home/adieu/OS/project/third_party/pipeann/include/filter/attribute.h \
  /home/adieu/OS/project/third_party/pipeann/include/utils/picojson.h \
  /usr/include/c++/15/map /usr/include/c++/15/bits/stl_map.h \

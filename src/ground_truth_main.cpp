@@ -10,8 +10,8 @@ namespace {
 void PrintUsage() {
   std::cout
       << "Usage: pipeann_gorgeous_ground_truth [options]\n"
-      << "  --index PATH\n"
-      << "  --approx PATH (optional full-precision data override)\n"
+      << "  --index_prefix PATH\n"
+      << "  --approx PATH (optional base data override)\n"
       << "  --queries PATH\n"
       << "  --query_format text|fvecs|bvecs|bin\n"
       << "  --top_k N\n"
@@ -44,7 +44,7 @@ hybrid::QueryInputMode ParseQueryInputMode(const std::string &value) {
 }
 
 struct ParsedArgs {
-  std::string index_path;
+  std::string index_prefix;
   std::string approx_path;
   std::string queries_path;
   std::string output_path;
@@ -67,8 +67,8 @@ ParsedArgs ParseArgs(int argc, char **argv) {
       PrintUsage();
       std::exit(0);
     }
-    if (arg == "--index") {
-      args.index_path = need_value("--index");
+    if (arg == "--index_prefix") {
+      args.index_prefix = need_value("--index_prefix");
       continue;
     }
     if (arg == "--approx") {
@@ -94,8 +94,8 @@ ParsedArgs ParseArgs(int argc, char **argv) {
     throw std::runtime_error("unknown argument: " + arg);
   }
 
-  if (args.index_path.empty() || args.queries_path.empty() || args.output_path.empty()) {
-    throw std::runtime_error("--index, --queries, and --output are required");
+  if (args.index_prefix.empty() || args.queries_path.empty() || args.output_path.empty()) {
+    throw std::runtime_error("--index_prefix, --queries, and --output are required");
   }
   if (args.top_k == 0) {
     throw std::runtime_error("--top_k must be greater than zero");
@@ -108,13 +108,14 @@ ParsedArgs ParseArgs(int argc, char **argv) {
 int main(int argc, char **argv) {
   try {
     const ParsedArgs args = ParseArgs(argc, argv);
-    const std::vector<std::vector<float>> queries =
-        hybrid::LoadQueryVectors(args.queries_path, args.query_format);
+    const std::vector<std::vector<float>> queries = hybrid::LoadQueryVectors(args.queries_path, args.query_format);
     const std::vector<std::vector<uint32_t>> truth =
-        hybrid::GenerateGroundTruthIds(args.index_path, args.approx_path, queries, args.top_k);
+        hybrid::GenerateGroundTruthIds(args.index_prefix, args.approx_path, queries, args.top_k);
     hybrid::WriteGroundTruthIds(args.output_path, truth);
 
     std::cout << "Ground truth completed\n";
+    std::cout << "  engine=pipeann_gorgeous_layout\n";
+    std::cout << "  index_prefix=" << args.index_prefix << '\n';
     std::cout << "  queries=" << truth.size() << '\n';
     std::cout << "  top_k=" << args.top_k << '\n';
     std::cout << "  output=" << args.output_path << '\n';

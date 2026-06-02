@@ -9,26 +9,19 @@
 namespace hybrid {
 
 enum class VectorInputMode {
-  kToy = 0,
-  kText = 1,
-  kFvecs = 2,
-  kBvecs = 3,
-  kBin = 4,
-};
-
-enum class BuildOutputMode {
-  kProjectCompatible = 0,
-  kGorgeousNative = 1,
+  kText = 0,
+  kFvecs = 1,
+  kBvecs = 2,
+  kBin = 3,
 };
 
 struct BuildConfig {
-  VectorInputMode input_mode = VectorInputMode::kToy;
+  VectorInputMode input_mode = VectorInputMode::kBin;
   std::string input_path;
   VectorInputMode train_query_mode = VectorInputMode::kBin;
   std::string train_query_path;
   std::string output_dir = "build_data";
-  std::string dataset_name = "toy";
-  BuildOutputMode output_mode = BuildOutputMode::kGorgeousNative;
+  std::string dataset_name = "dataset";
   uint32_t degree = 4;
   uint32_t dense_degree = 0;
   uint32_t r_ood = 0;
@@ -46,11 +39,9 @@ struct BuildConfig {
   uint32_t pq_subspaces = 3;
   uint32_t pq_centroids = 4;
   uint32_t pq_iterations = 6;
-  uint32_t toy_points = 12;
 };
 
 struct BuildArtifacts {
-  BuildOutputMode output_mode = BuildOutputMode::kGorgeousNative;
   std::string workflow_prefix;
   std::string pipeann_base_data_path;
   std::string pipeann_train_query_path;
@@ -58,17 +49,14 @@ struct BuildArtifacts {
   std::string gorgeous_partition_bin_path;
   std::string gorgeous_relayout_index_path;
   std::string raw_disk_index_path;
-  std::string relayout_index_path;
-  std::string index_path;
-  std::string partition_path;
-  std::string reorder_path;
+  std::string pipeann_equal_layout_path;
+  std::string pipeann_gorgeous_layout_path;
   std::string pipeann_refine_sidecar_path;
   std::string pipeann_refine_manifest_path;
   std::string pipeann_refine_nodes_path;
   std::string approx_path;
   std::string pq_codebook_path;
   std::string pq_codes_path;
-  bool has_project_compatible_export = false;
   uint32_t num_points = 0;
   uint32_t dim = 0;
   pipeann_integration::PipeannBuildStats pipeann_build_stats{};
@@ -88,7 +76,6 @@ std::vector<std::vector<float>> LoadTextVectors(const std::string &path);
 std::vector<std::vector<float>> LoadFvecsVectors(const std::string &path);
 std::vector<std::vector<float>> LoadBvecsVectors(const std::string &path);
 std::vector<std::vector<float>> LoadBinVectors(const std::string &path);
-std::vector<std::vector<float>> GenerateToyVectors(uint32_t num_points);
 std::vector<std::vector<uint32_t>> BuildKnnGraph(const std::vector<std::vector<float>> &vectors,
                                                  uint32_t degree);
 ReplicatedLayoutResult BuildReplicatedLayoutResult(

@@ -157,53 +157,24 @@ CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.o: \
  /usr/include/c++/15/bits/fstream.tcc \
  /home/adieu/OS/project/include/integrations/linux_aligned_file_reader.h \
  /home/adieu/OS/project/include/integrations/disk_index_relayout.h \
+ /home/adieu/OS/project/include/io/page_reader.h \
  /home/adieu/OS/project/include/quant/approx_distance.h \
- /usr/include/c++/15/algorithm /usr/include/c++/15/bits/stl_algo.h \
- /usr/include/c++/15/bits/algorithmfwd.h \
- /usr/include/c++/15/bits/stl_heap.h \
- /usr/include/c++/15/bits/uniform_int_dist.h \
- /usr/include/c++/15/pstl/glue_algorithm_defs.h \
- /usr/include/c++/15/filesystem /usr/include/c++/15/bits/fs_fwd.h \
- /usr/include/c++/15/bits/chrono.h /usr/include/c++/15/ratio \
- /usr/include/c++/15/ctime /usr/include/c++/15/bits/parse_numbers.h \
- /usr/include/c++/15/bits/fs_path.h /usr/include/c++/15/locale \
- /usr/include/c++/15/bits/locale_facets_nonio.h \
- /usr/include/c++/15/x86_64-suse-linux/bits/time_members.h \
- /usr/include/c++/15/x86_64-suse-linux/bits/messages_members.h \
- /usr/include/libintl.h /usr/include/c++/15/bits/locale_facets_nonio.tcc \
- /usr/include/c++/15/bits/locale_conv.h /usr/include/c++/15/iomanip \
- /usr/include/c++/15/bits/quoted_string.h /usr/include/c++/15/sstream \
- /usr/include/c++/15/bits/sstream.tcc /usr/include/c++/15/codecvt \
- /usr/include/c++/15/bits/fs_dir.h /usr/include/c++/15/bits/fs_ops.h \
- /usr/include/c++/15/queue /usr/include/c++/15/deque \
- /usr/include/c++/15/bits/stl_deque.h /usr/include/c++/15/bits/deque.tcc \
- /usr/include/c++/15/bits/stl_queue.h \
- /home/adieu/OS/project/third_party/pipeann/include/linux_aligned_file_reader.h \
- /home/adieu/OS/project/third_party/pipeann/include/aligned_file_reader.h \
- /usr/include/fcntl.h /usr/include/bits/fcntl.h \
- /usr/include/bits/fcntl-linux.h /usr/include/bits/types/struct_iovec.h \
- /usr/include/linux/falloc.h /usr/include/bits/stat.h \
- /usr/include/bits/struct_stat.h /usr/include/unistd.h \
- /usr/include/bits/posix_opt.h /usr/include/bits/environments.h \
- /usr/include/bits/confname.h /usr/include/bits/getopt_posix.h \
- /usr/include/bits/getopt_core.h /usr/include/bits/unistd_ext.h \
- /usr/include/linux/close_range.h \
- /home/adieu/OS/project/third_party/pipeann/include/utils/page_cache.h \
- /usr/include/c++/15/cstring /usr/include/string.h /usr/include/strings.h \
- /home/adieu/OS/project/third_party/pipeann/include/utils.h \
- /usr/include/c++/15/cassert /usr/include/assert.h \
- /usr/include/c++/15/cfloat \
- /usr/lib64/gcc/x86_64-suse-linux/15/include/float.h \
- /usr/include/c++/15/functional /usr/include/c++/15/bits/std_function.h \
+ /home/adieu/OS/project/include/search/graph_cache.h \
  /usr/include/c++/15/unordered_map \
  /usr/include/c++/15/bits/unordered_map.h \
  /usr/include/c++/15/bits/hashtable.h \
  /usr/include/c++/15/bits/hashtable_policy.h \
  /usr/include/c++/15/bits/enable_special_members.h \
  /usr/include/c++/15/bits/node_handle.h \
- /usr/include/c++/15/bits/erase_if.h /usr/include/c++/15/array \
- /usr/include/c++/15/compare /usr/include/c++/15/iostream \
- /usr/include/c++/15/random /usr/include/c++/15/cmath /usr/include/math.h \
+ /usr/include/c++/15/bits/erase_if.h \
+ /home/adieu/OS/project/include/search/query_buffer_pool.h \
+ /usr/include/c++/15/algorithm /usr/include/c++/15/bits/stl_algo.h \
+ /usr/include/c++/15/bits/algorithmfwd.h \
+ /usr/include/c++/15/bits/stl_heap.h \
+ /usr/include/c++/15/bits/uniform_int_dist.h \
+ /usr/include/c++/15/pstl/glue_algorithm_defs.h /usr/include/c++/15/deque \
+ /usr/include/c++/15/bits/stl_deque.h /usr/include/c++/15/bits/deque.tcc \
+ /usr/include/c++/15/cmath /usr/include/math.h \
  /usr/include/bits/math-vector.h /usr/include/bits/libm-simd-decl-stubs.h \
  /usr/include/bits/flt-eval-method.h /usr/include/bits/fp-logb.h \
  /usr/include/bits/fp-fast.h \
@@ -221,7 +192,39 @@ CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.o: \
  /usr/include/c++/15/tr1/modified_bessel_func.tcc \
  /usr/include/c++/15/tr1/poly_hermite.tcc \
  /usr/include/c++/15/tr1/poly_laguerre.tcc \
- /usr/include/c++/15/tr1/riemann_zeta.tcc \
+ /usr/include/c++/15/tr1/riemann_zeta.tcc /usr/include/c++/15/filesystem \
+ /usr/include/c++/15/bits/fs_fwd.h /usr/include/c++/15/bits/chrono.h \
+ /usr/include/c++/15/ratio /usr/include/c++/15/ctime \
+ /usr/include/c++/15/bits/parse_numbers.h \
+ /usr/include/c++/15/bits/fs_path.h /usr/include/c++/15/locale \
+ /usr/include/c++/15/bits/locale_facets_nonio.h \
+ /usr/include/c++/15/x86_64-suse-linux/bits/time_members.h \
+ /usr/include/c++/15/x86_64-suse-linux/bits/messages_members.h \
+ /usr/include/libintl.h /usr/include/c++/15/bits/locale_facets_nonio.tcc \
+ /usr/include/c++/15/bits/locale_conv.h /usr/include/c++/15/iomanip \
+ /usr/include/c++/15/bits/quoted_string.h /usr/include/c++/15/sstream \
+ /usr/include/c++/15/bits/sstream.tcc /usr/include/c++/15/codecvt \
+ /usr/include/c++/15/bits/fs_dir.h /usr/include/c++/15/bits/fs_ops.h \
+ /usr/include/c++/15/queue /usr/include/c++/15/bits/stl_queue.h \
+ /home/adieu/OS/project/third_party/pipeann/include/linux_aligned_file_reader.h \
+ /home/adieu/OS/project/third_party/pipeann/include/aligned_file_reader.h \
+ /usr/include/fcntl.h /usr/include/bits/fcntl.h \
+ /usr/include/bits/fcntl-linux.h /usr/include/bits/types/struct_iovec.h \
+ /usr/include/linux/falloc.h /usr/include/bits/stat.h \
+ /usr/include/bits/struct_stat.h /usr/include/unistd.h \
+ /usr/include/bits/posix_opt.h /usr/include/bits/environments.h \
+ /usr/include/bits/confname.h /usr/include/bits/getopt_posix.h \
+ /usr/include/bits/getopt_core.h /usr/include/bits/unistd_ext.h \
+ /usr/include/linux/close_range.h \
+ /home/adieu/OS/project/third_party/pipeann/include/utils/page_cache.h \
+ /usr/include/c++/15/cstring /usr/include/string.h /usr/include/strings.h \
+ /home/adieu/OS/project/third_party/pipeann/include/utils.h \
+ /usr/include/c++/15/cassert /usr/include/assert.h \
+ /usr/include/c++/15/cfloat \
+ /usr/lib64/gcc/x86_64-suse-linux/15/include/float.h \
+ /usr/include/c++/15/functional /usr/include/c++/15/bits/std_function.h \
+ /usr/include/c++/15/array /usr/include/c++/15/compare \
+ /usr/include/c++/15/iostream /usr/include/c++/15/random \
  /usr/include/c++/15/bits/random.h \
  /usr/include/c++/15/x86_64-suse-linux/bits/opt_random.h \
  /usr/lib64/gcc/x86_64-suse-linux/15/include/pmmintrin.h \
@@ -390,6 +393,5 @@ CMakeFiles/pipeann_gorgeous_core.dir/src/pipeline_search.cpp.o: \
  /home/adieu/OS/project/third_party/pipeann/include/utils/lock_table.h \
  /home/adieu/OS/project/third_party/pipeann/include/filter/selector.h \
  /home/adieu/OS/project/third_party/pipeann/include/filter/attribute.h \
- /home/adieu/OS/project/include/io/page_reader.h \
  /home/adieu/OS/project/include/search/search_session.h \
  /home/adieu/OS/project/include/search/candidate_pool.h
