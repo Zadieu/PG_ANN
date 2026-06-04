@@ -279,16 +279,20 @@ std::vector<std::vector<float>> LoadBinVectors(const std::string &path) {
   if (num_points == 0 || dim == 0) {
     throw std::runtime_error("bin vector file must describe a non-empty dataset");
   }
-  std::vector<std::vector<float>> vectors(num_points, std::vector<float>(dim, 0.0f));
-  for (uint32_t i = 0; i < num_points; ++i) {
-    in.read(reinterpret_cast<char *>(vectors[i].data()), static_cast<std::streamsize>(dim * sizeof(float)));
-    if (!in) {
-      throw std::runtime_error("failed to read bin vector payload");
-    }
+  std::vector<float> flat(static_cast<size_t>(num_points) * dim);
+  in.read(reinterpret_cast<char *>(flat.data()),
+          static_cast<std::streamsize>(flat.size() * sizeof(float)));
+  if (!in) {
+    throw std::runtime_error("failed to read bin vector payload");
   }
   char extra = 0;
   if (in.read(&extra, 1)) {
     throw std::runtime_error("bin vector file has unexpected trailing bytes");
+  }
+
+  std::vector<std::vector<float>> vectors(num_points);
+  for (uint32_t i = 0; i < num_points; ++i) {
+    vectors[i].assign(flat.begin() + static_cast<size_t>(i) * dim, flat.begin() + static_cast<size_t>(i + 1) * dim);
   }
   return vectors;
 }

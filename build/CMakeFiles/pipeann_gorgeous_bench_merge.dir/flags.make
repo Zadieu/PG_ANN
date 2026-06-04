@@ -6,5 +6,5 @@ CXX_DEFINES = -DBG_IO_THREAD -DDNDEBUG
 
 CXX_INCLUDES = -I/home/adieu/OS/project/include -I/home/adieu/OS/project/third_party/gorgeous/graph_partition/include -I/home/adieu/OS/project/third_party/pipeann/include
 
-CXX_FLAGS = -std=c++17 -Wall -Wextra -Wpedantic -fopenmp
+CXX_FLAGS = -O3 -DNDEBUG -std=c++17 -fopenmp
 

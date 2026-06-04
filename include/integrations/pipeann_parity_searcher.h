@@ -28,6 +28,14 @@ struct PipeannParityQueryResult {
   pipeann::QueryStats stats{};
 };
 
+void SearchInto(PipeannParityIndex &index,
+                const float *query,
+                uint32_t dim,
+                const PipeannParitySearchConfig &config,
+                uint32_t *ids_out,
+                float *distances_out,
+                pipeann::QueryStats *stats);
+
 PipeannParityQueryResult SearchOne(PipeannParityIndex &index,
                                    const float *query,
                                    uint32_t dim,

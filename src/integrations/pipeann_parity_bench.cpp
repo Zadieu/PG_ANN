@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstring>
+#include <functional>
 #include <numeric>
 #include <stdexcept>
 #include <vector>
@@ -106,7 +108,37 @@ double CalculateRecallAtK(const PipeannParityBenchConfig &config,
                                    config.recall_at_k);
 }
 
+const float *ResolveQueryBase(const PipeannParityBenchConfig &config,
+                              uint32_t dim,
+                              std::vector<float> &owned_flat_queries) {
+  const size_t n = config.queries.size();
+  const size_t expected_bytes = n * static_cast<size_t>(dim);
+  if (config.flat_query_data.size() == expected_bytes) {
+    return config.flat_query_data.data();
+  }
+
+  owned_flat_queries.resize(expected_bytes);
+  float *dst = owned_flat_queries.data();
+  for (size_t i = 0; i < n; ++i) {
+    std::memcpy(dst + i * dim, config.queries[i].data(), static_cast<size_t>(dim) * sizeof(float));
+  }
+  return owned_flat_queries.data();
+}
+
 }  // namespace
+
+void EnsureFlatQueryData(PipeannParityBenchConfig &config, uint32_t dim) {
+  const size_t expected_bytes = config.queries.size() * static_cast<size_t>(dim);
+  if (config.flat_query_data.size() == expected_bytes) {
+    return;
+  }
+  config.flat_query_data.resize(expected_bytes);
+  for (size_t i = 0; i < config.queries.size(); ++i) {
+    std::memcpy(config.flat_query_data.data() + i * dim,
+                config.queries[i].data(),
+                static_cast<size_t>(dim) * sizeof(float));
+  }
+}
 
 PipeannParityLResult RunPipeannParityQueries(PipeannParityIndex &index,
                                              const PipeannParityBenchConfig &config) {
@@ -121,39 +153,52 @@ PipeannParityLResult RunPipeannParityQueries(PipeannParityIndex &index,
     return result;
   }
 
+  std::vector<float> owned_flat_queries;
+  const float *query_base = ResolveQueryBase(config, dim, owned_flat_queries);
+  const size_t top_k = static_cast<size_t>(config.search.top_k);
+
   std::vector<pipeann::QueryStats> stats(n);
   std::vector<uint64_t> latency_us(n, 0);
-  std::vector<uint32_t> flat_results(n * static_cast<size_t>(config.search.top_k), 0);
+  std::vector<uint32_t> flat_results(n * top_k, 0);
 
-  const auto started = std::chrono::steady_clock::now();
-#pragma omp parallel num_threads(config.num_threads)
+  omp_set_num_threads(static_cast<int>(config.num_threads));
+  const auto started = std::chrono::high_resolution_clock::now();
+#pragma omp parallel num_threads(static_cast<int>(config.num_threads))
   {
+    std::vector<uint32_t> ids(top_k);
+    std::vector<float> distances(top_k);
 #pragma omp for schedule(dynamic, 1)
     for (int64_t i = 0; i < static_cast<int64_t>(n); ++i) {
-      const auto query_started = std::chrono::steady_clock::now();
-      auto query_result =
-          SearchOne(index, config.queries[static_cast<size_t>(i)].data(), dim, config.search);
+      const auto query_started = std::chrono::high_resolution_clock::now();
+      pipeann::QueryStats query_stats{};
+      SearchInto(index,
+                 query_base + static_cast<size_t>(i) * dim,
+                 dim,
+                 config.search,
+                 ids.data(),
+                 distances.data(),
+                 &query_stats);
       const uint64_t total_us = static_cast<uint64_t>(
-          std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - query_started)
+          std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() -
+                                                                query_started)
               .count());
-      query_result.stats.total_us = static_cast<double>(total_us);
-      stats[static_cast<size_t>(i)] = query_result.stats;
+      query_stats.total_us = static_cast<double>(total_us);
+      stats[static_cast<size_t>(i)] = query_stats;
       latency_us[static_cast<size_t>(i)] = total_us;
-      for (size_t k = 0; k < query_result.ids.size(); ++k) {
-        flat_results[static_cast<size_t>(i) * static_cast<size_t>(config.search.top_k) + k] =
-            query_result.ids[k];
-      }
+      std::memcpy(flat_results.data() + static_cast<size_t>(i) * top_k,
+                  ids.data(),
+                  top_k * sizeof(uint32_t));
     }
   }
   const double elapsed_s =
-      std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
+      std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - started).count();
 
   result.qps = elapsed_s > 0.0 ? static_cast<double>(n) / elapsed_s : 0.0;
   result.mean_latency_us = MeanLatencyUs(latency_us);
   result.p99_latency_us = P99LatencyUs(latency_us);
   result.mean_hops = MeanStats(stats, [](const pipeann::QueryStats &s) { return s.n_hops; });
   result.mean_ios = MeanStats(stats, [](const pipeann::QueryStats &s) { return s.n_ios; });
-  // Vendored QueryStats does not currently expose UniquePgIO / DupPgHit / Polls parity counters.
+  // Vendored QueryStats does not expose pipe-mode page dedup counters.
   result.mean_unique_pg_io = 0.0;
   result.mean_dup_pg_hit = 0.0;
   result.mean_polls = 0.0;
@@ -165,10 +210,13 @@ std::vector<PipeannParityLResult> RunPipeannParitySweep(
     PipeannParityIndex &index,
     const PipeannParityBenchConfig &base,
     const std::vector<uint32_t> &l_values) {
+  const uint32_t dim = static_cast<uint32_t>(index.index().meta_.data_dim);
+  PipeannParityBenchConfig config = base;
+  EnsureFlatQueryData(config, dim);
+
   std::vector<PipeannParityLResult> results;
   results.reserve(l_values.size());
   for (uint32_t l_value : l_values) {
-    PipeannParityBenchConfig config = base;
     config.search.l_search = l_value;
     results.push_back(RunPipeannParityQueries(index, config));
   }

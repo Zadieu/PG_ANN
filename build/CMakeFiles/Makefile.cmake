@@ -60,11 +60,8 @@ set(CMAKE_MAKEFILE_PRODUCTS
 set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/pipeann_original_core.dir/DependInfo.cmake"
   "CMakeFiles/pipeann_gorgeous_core.dir/DependInfo.cmake"
-  "CMakeFiles/pipeann_gorgeous_build.dir/DependInfo.cmake"
   "CMakeFiles/pipeann_gorgeous_bench.dir/DependInfo.cmake"
   "CMakeFiles/pipeann_gorgeous_bench_pipeann.dir/DependInfo.cmake"
-  "CMakeFiles/pipeann_gorgeous_ground_truth.dir/DependInfo.cmake"
-  "CMakeFiles/pipeann_gorgeous_relayout.dir/DependInfo.cmake"
   "CMakeFiles/pipeann_gorgeous_bench_merge.dir/DependInfo.cmake"
   "CMakeFiles/pipeann_gorgeous_bench_compare.dir/DependInfo.cmake"
   )

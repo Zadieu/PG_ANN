@@ -6,5 +6,5 @@ CXX_DEFINES = -DBG_IO_THREAD -DDNDEBUG
 
 CXX_INCLUDES = -I/home/adieu/OS/project/third_party/pipeann/include
 
-CXX_FLAGS = -std=c++17 -fopenmp-simd -Wno-class-memaccess -Wno-unused-variable -Wno-unused-parameter -Wno-unused-but-set-variable -fopenmp
+CXX_FLAGS = -O3 -DNDEBUG -std=c++17 -fopenmp-simd -Wno-class-memaccess -Wno-unused-variable -Wno-unused-parameter -Wno-unused-but-set-variable -fopenmp
 

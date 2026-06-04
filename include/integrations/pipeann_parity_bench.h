@@ -13,9 +13,14 @@ struct PipeannParityBenchConfig {
   PipeannParitySearchConfig search;
   uint32_t num_threads = 1;
   std::vector<std::vector<float>> queries;
+  // Optional contiguous query layout (queries.size() * dim floats). When populated,
+  // the benchmark hot path avoids nested-vector indexing and extra copies.
+  std::vector<float> flat_query_data;
   std::vector<std::vector<uint32_t>> ground_truth_ids;
   uint32_t recall_at_k = 10;
 };
+
+void EnsureFlatQueryData(PipeannParityBenchConfig &config, uint32_t dim);
 
 struct PipeannParityLResult {
   uint32_t L = 0;

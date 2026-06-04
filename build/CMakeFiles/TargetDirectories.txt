@@ -1,10 +1,7 @@
 /home/adieu/OS/project/build/CMakeFiles/pipeann_original_core.dir
 /home/adieu/OS/project/build/CMakeFiles/pipeann_gorgeous_core.dir
-/home/adieu/OS/project/build/CMakeFiles/pipeann_gorgeous_build.dir
 /home/adieu/OS/project/build/CMakeFiles/pipeann_gorgeous_bench.dir
 /home/adieu/OS/project/build/CMakeFiles/pipeann_gorgeous_bench_pipeann.dir
-/home/adieu/OS/project/build/CMakeFiles/pipeann_gorgeous_ground_truth.dir
-/home/adieu/OS/project/build/CMakeFiles/pipeann_gorgeous_relayout.dir
 /home/adieu/OS/project/build/CMakeFiles/pipeann_gorgeous_bench_merge.dir
 /home/adieu/OS/project/build/CMakeFiles/pipeann_gorgeous_bench_compare.dir
 /home/adieu/OS/project/build/CMakeFiles/edit_cache.dir

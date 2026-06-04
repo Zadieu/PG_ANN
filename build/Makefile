@@ -143,19 +143,6 @@ pipeann_gorgeous_core/fast:
 .PHONY : pipeann_gorgeous_core/fast
 
 #=============================================================================
-# Target rules for targets named pipeann_gorgeous_build
-
-# Build rule for target.
-pipeann_gorgeous_build: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 pipeann_gorgeous_build
-.PHONY : pipeann_gorgeous_build
-
-# fast build rule for target.
-pipeann_gorgeous_build/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_build.dir/build.make CMakeFiles/pipeann_gorgeous_build.dir/build
-.PHONY : pipeann_gorgeous_build/fast
-
-#=============================================================================
 # Target rules for targets named pipeann_gorgeous_bench
 
 # Build rule for target.
@@ -180,32 +167,6 @@ pipeann_gorgeous_bench_pipeann: cmake_check_build_system
 pipeann_gorgeous_bench_pipeann/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_bench_pipeann.dir/build.make CMakeFiles/pipeann_gorgeous_bench_pipeann.dir/build
 .PHONY : pipeann_gorgeous_bench_pipeann/fast
-
-#=============================================================================
-# Target rules for targets named pipeann_gorgeous_ground_truth
-
-# Build rule for target.
-pipeann_gorgeous_ground_truth: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 pipeann_gorgeous_ground_truth
-.PHONY : pipeann_gorgeous_ground_truth
-
-# fast build rule for target.
-pipeann_gorgeous_ground_truth/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_ground_truth.dir/build.make CMakeFiles/pipeann_gorgeous_ground_truth.dir/build
-.PHONY : pipeann_gorgeous_ground_truth/fast
-
-#=============================================================================
-# Target rules for targets named pipeann_gorgeous_relayout
-
-# Build rule for target.
-pipeann_gorgeous_relayout: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 pipeann_gorgeous_relayout
-.PHONY : pipeann_gorgeous_relayout
-
-# fast build rule for target.
-pipeann_gorgeous_relayout/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_relayout.dir/build.make CMakeFiles/pipeann_gorgeous_relayout.dir/build
-.PHONY : pipeann_gorgeous_relayout/fast
 
 #=============================================================================
 # Target rules for targets named pipeann_gorgeous_bench_merge
@@ -305,102 +266,6 @@ src/bench_merge_main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_bench_merge.dir/build.make CMakeFiles/pipeann_gorgeous_bench_merge.dir/src/bench_merge_main.cpp.s
 .PHONY : src/bench_merge_main.cpp.s
 
-src/build_main.o: src/build_main.cpp.o
-.PHONY : src/build_main.o
-
-# target to build an object file
-src/build_main.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_build.dir/build.make CMakeFiles/pipeann_gorgeous_build.dir/src/build_main.cpp.o
-.PHONY : src/build_main.cpp.o
-
-src/build_main.i: src/build_main.cpp.i
-.PHONY : src/build_main.i
-
-# target to preprocess a source file
-src/build_main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_build.dir/build.make CMakeFiles/pipeann_gorgeous_build.dir/src/build_main.cpp.i
-.PHONY : src/build_main.cpp.i
-
-src/build_main.s: src/build_main.cpp.s
-.PHONY : src/build_main.s
-
-# target to generate assembly for a file
-src/build_main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_build.dir/build.make CMakeFiles/pipeann_gorgeous_build.dir/src/build_main.cpp.s
-.PHONY : src/build_main.cpp.s
-
-src/ground_truth_main.o: src/ground_truth_main.cpp.o
-.PHONY : src/ground_truth_main.o
-
-# target to build an object file
-src/ground_truth_main.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_ground_truth.dir/build.make CMakeFiles/pipeann_gorgeous_ground_truth.dir/src/ground_truth_main.cpp.o
-.PHONY : src/ground_truth_main.cpp.o
-
-src/ground_truth_main.i: src/ground_truth_main.cpp.i
-.PHONY : src/ground_truth_main.i
-
-# target to preprocess a source file
-src/ground_truth_main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_ground_truth.dir/build.make CMakeFiles/pipeann_gorgeous_ground_truth.dir/src/ground_truth_main.cpp.i
-.PHONY : src/ground_truth_main.cpp.i
-
-src/ground_truth_main.s: src/ground_truth_main.cpp.s
-.PHONY : src/ground_truth_main.s
-
-# target to generate assembly for a file
-src/ground_truth_main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_ground_truth.dir/build.make CMakeFiles/pipeann_gorgeous_ground_truth.dir/src/ground_truth_main.cpp.s
-.PHONY : src/ground_truth_main.cpp.s
-
-src/integrations/disk_index_relayout.o: src/integrations/disk_index_relayout.cpp.o
-.PHONY : src/integrations/disk_index_relayout.o
-
-# target to build an object file
-src/integrations/disk_index_relayout.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/disk_index_relayout.cpp.o
-.PHONY : src/integrations/disk_index_relayout.cpp.o
-
-src/integrations/disk_index_relayout.i: src/integrations/disk_index_relayout.cpp.i
-.PHONY : src/integrations/disk_index_relayout.i
-
-# target to preprocess a source file
-src/integrations/disk_index_relayout.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/disk_index_relayout.cpp.i
-.PHONY : src/integrations/disk_index_relayout.cpp.i
-
-src/integrations/disk_index_relayout.s: src/integrations/disk_index_relayout.cpp.s
-.PHONY : src/integrations/disk_index_relayout.s
-
-# target to generate assembly for a file
-src/integrations/disk_index_relayout.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/disk_index_relayout.cpp.s
-.PHONY : src/integrations/disk_index_relayout.cpp.s
-
-src/integrations/gorgeous_original.o: src/integrations/gorgeous_original.cpp.o
-.PHONY : src/integrations/gorgeous_original.o
-
-# target to build an object file
-src/integrations/gorgeous_original.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/gorgeous_original.cpp.o
-.PHONY : src/integrations/gorgeous_original.cpp.o
-
-src/integrations/gorgeous_original.i: src/integrations/gorgeous_original.cpp.i
-.PHONY : src/integrations/gorgeous_original.i
-
-# target to preprocess a source file
-src/integrations/gorgeous_original.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/gorgeous_original.cpp.i
-.PHONY : src/integrations/gorgeous_original.cpp.i
-
-src/integrations/gorgeous_original.s: src/integrations/gorgeous_original.cpp.s
-.PHONY : src/integrations/gorgeous_original.s
-
-# target to generate assembly for a file
-src/integrations/gorgeous_original.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/gorgeous_original.cpp.s
-.PHONY : src/integrations/gorgeous_original.cpp.s
-
 src/integrations/linux_aligned_file_reader.o: src/integrations/linux_aligned_file_reader.cpp.o
 .PHONY : src/integrations/linux_aligned_file_reader.o
 
@@ -424,30 +289,6 @@ src/integrations/linux_aligned_file_reader.s: src/integrations/linux_aligned_fil
 src/integrations/linux_aligned_file_reader.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/linux_aligned_file_reader.cpp.s
 .PHONY : src/integrations/linux_aligned_file_reader.cpp.s
-
-src/integrations/pipeann_builder.o: src/integrations/pipeann_builder.cpp.o
-.PHONY : src/integrations/pipeann_builder.o
-
-# target to build an object file
-src/integrations/pipeann_builder.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_builder.cpp.o
-.PHONY : src/integrations/pipeann_builder.cpp.o
-
-src/integrations/pipeann_builder.i: src/integrations/pipeann_builder.cpp.i
-.PHONY : src/integrations/pipeann_builder.i
-
-# target to preprocess a source file
-src/integrations/pipeann_builder.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_builder.cpp.i
-.PHONY : src/integrations/pipeann_builder.cpp.i
-
-src/integrations/pipeann_builder.s: src/integrations/pipeann_builder.cpp.s
-.PHONY : src/integrations/pipeann_builder.s
-
-# target to generate assembly for a file
-src/integrations/pipeann_builder.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/integrations/pipeann_builder.cpp.s
-.PHONY : src/integrations/pipeann_builder.cpp.s
 
 src/integrations/pipeann_layout_activate.o: src/integrations/pipeann_layout_activate.cpp.o
 .PHONY : src/integrations/pipeann_layout_activate.o
@@ -569,54 +410,6 @@ src/pipeann_parity_main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_bench_pipeann.dir/build.make CMakeFiles/pipeann_gorgeous_bench_pipeann.dir/src/pipeann_parity_main.cpp.s
 .PHONY : src/pipeann_parity_main.cpp.s
 
-src/relayout_main.o: src/relayout_main.cpp.o
-.PHONY : src/relayout_main.o
-
-# target to build an object file
-src/relayout_main.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_relayout.dir/build.make CMakeFiles/pipeann_gorgeous_relayout.dir/src/relayout_main.cpp.o
-.PHONY : src/relayout_main.cpp.o
-
-src/relayout_main.i: src/relayout_main.cpp.i
-.PHONY : src/relayout_main.i
-
-# target to preprocess a source file
-src/relayout_main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_relayout.dir/build.make CMakeFiles/pipeann_gorgeous_relayout.dir/src/relayout_main.cpp.i
-.PHONY : src/relayout_main.cpp.i
-
-src/relayout_main.s: src/relayout_main.cpp.s
-.PHONY : src/relayout_main.s
-
-# target to generate assembly for a file
-src/relayout_main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_relayout.dir/build.make CMakeFiles/pipeann_gorgeous_relayout.dir/src/relayout_main.cpp.s
-.PHONY : src/relayout_main.cpp.s
-
-src/tools/build_pipeline.o: src/tools/build_pipeline.cpp.o
-.PHONY : src/tools/build_pipeline.o
-
-# target to build an object file
-src/tools/build_pipeline.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/tools/build_pipeline.cpp.o
-.PHONY : src/tools/build_pipeline.cpp.o
-
-src/tools/build_pipeline.i: src/tools/build_pipeline.cpp.i
-.PHONY : src/tools/build_pipeline.i
-
-# target to preprocess a source file
-src/tools/build_pipeline.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/tools/build_pipeline.cpp.i
-.PHONY : src/tools/build_pipeline.cpp.i
-
-src/tools/build_pipeline.s: src/tools/build_pipeline.cpp.s
-.PHONY : src/tools/build_pipeline.s
-
-# target to generate assembly for a file
-src/tools/build_pipeline.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/tools/build_pipeline.cpp.s
-.PHONY : src/tools/build_pipeline.cpp.s
-
 src/tools/tool_cli.o: src/tools/tool_cli.cpp.o
 .PHONY : src/tools/tool_cli.o
 
@@ -640,6 +433,30 @@ src/tools/tool_cli.s: src/tools/tool_cli.cpp.s
 src/tools/tool_cli.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/tools/tool_cli.cpp.s
 .PHONY : src/tools/tool_cli.cpp.s
+
+src/tools/vector_io.o: src/tools/vector_io.cpp.o
+.PHONY : src/tools/vector_io.o
+
+# target to build an object file
+src/tools/vector_io.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/tools/vector_io.cpp.o
+.PHONY : src/tools/vector_io.cpp.o
+
+src/tools/vector_io.i: src/tools/vector_io.cpp.i
+.PHONY : src/tools/vector_io.i
+
+# target to preprocess a source file
+src/tools/vector_io.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/tools/vector_io.cpp.i
+.PHONY : src/tools/vector_io.cpp.i
+
+src/tools/vector_io.s: src/tools/vector_io.cpp.s
+.PHONY : src/tools/vector_io.s
+
+# target to generate assembly for a file
+src/tools/vector_io.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipeann_gorgeous_core.dir/build.make CMakeFiles/pipeann_gorgeous_core.dir/src/tools/vector_io.cpp.s
+.PHONY : src/tools/vector_io.cpp.s
 
 third_party/pipeann/src/index.o: third_party/pipeann/src/index.cpp.o
 .PHONY : third_party/pipeann/src/index.o
@@ -1013,10 +830,7 @@ help:
 	@echo "... pipeann_gorgeous_bench_compare"
 	@echo "... pipeann_gorgeous_bench_merge"
 	@echo "... pipeann_gorgeous_bench_pipeann"
-	@echo "... pipeann_gorgeous_build"
 	@echo "... pipeann_gorgeous_core"
-	@echo "... pipeann_gorgeous_ground_truth"
-	@echo "... pipeann_gorgeous_relayout"
 	@echo "... pipeann_original_core"
 	@echo "... src/bench_compare_main.o"
 	@echo "... src/bench_compare_main.i"
@@ -1027,24 +841,9 @@ help:
 	@echo "... src/bench_merge_main.o"
 	@echo "... src/bench_merge_main.i"
 	@echo "... src/bench_merge_main.s"
-	@echo "... src/build_main.o"
-	@echo "... src/build_main.i"
-	@echo "... src/build_main.s"
-	@echo "... src/ground_truth_main.o"
-	@echo "... src/ground_truth_main.i"
-	@echo "... src/ground_truth_main.s"
-	@echo "... src/integrations/disk_index_relayout.o"
-	@echo "... src/integrations/disk_index_relayout.i"
-	@echo "... src/integrations/disk_index_relayout.s"
-	@echo "... src/integrations/gorgeous_original.o"
-	@echo "... src/integrations/gorgeous_original.i"
-	@echo "... src/integrations/gorgeous_original.s"
 	@echo "... src/integrations/linux_aligned_file_reader.o"
 	@echo "... src/integrations/linux_aligned_file_reader.i"
 	@echo "... src/integrations/linux_aligned_file_reader.s"
-	@echo "... src/integrations/pipeann_builder.o"
-	@echo "... src/integrations/pipeann_builder.i"
-	@echo "... src/integrations/pipeann_builder.s"
 	@echo "... src/integrations/pipeann_layout_activate.o"
 	@echo "... src/integrations/pipeann_layout_activate.i"
 	@echo "... src/integrations/pipeann_layout_activate.s"
@@ -1060,15 +859,12 @@ help:
 	@echo "... src/pipeann_parity_main.o"
 	@echo "... src/pipeann_parity_main.i"
 	@echo "... src/pipeann_parity_main.s"
-	@echo "... src/relayout_main.o"
-	@echo "... src/relayout_main.i"
-	@echo "... src/relayout_main.s"
-	@echo "... src/tools/build_pipeline.o"
-	@echo "... src/tools/build_pipeline.i"
-	@echo "... src/tools/build_pipeline.s"
 	@echo "... src/tools/tool_cli.o"
 	@echo "... src/tools/tool_cli.i"
 	@echo "... src/tools/tool_cli.s"
+	@echo "... src/tools/vector_io.o"
+	@echo "... src/tools/vector_io.i"
+	@echo "... src/tools/vector_io.s"
 	@echo "... third_party/pipeann/src/index.o"
 	@echo "... third_party/pipeann/src/index.i"
 	@echo "... third_party/pipeann/src/index.s"
