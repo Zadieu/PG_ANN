@@ -2,7 +2,7 @@
 set -euo pipefail
 
 BASELINE_DIR=/home/dell/projects/Gorgeous-original-baseline
-CURRENT_DIR=/home/dell/projects/Gorgeous-main
+CURRENT_DIR=/home/dell/projects/PipeGor_ANN
 RESULT_ROOT=/home/dell/projects/gorgeous_demo_results
 OUT="$RESULT_ROOT/original_vs_current_sift1m_$(date +%Y%m%d_%H%M%S)"
 

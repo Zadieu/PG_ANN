@@ -137,7 +137,7 @@ int search_disk_index(
         std::string tags_path = mem_sample_path + "_ids.bin";
         _decoIndex->load_sampled_tags(tags_path, tags);
       }
-      _decoIndex->load_mem_graph(disk_graph_prefix, tags, mem_graph_use_ratio);
+      _decoIndex->load_mem_graph(disk_graph_prefix, tags, mem_graph_use_ratio, mem_L);
       _decoIndex->load_mem_emb(tags, mem_emb_use_ratio);
     }
   } else {
@@ -181,9 +181,15 @@ int search_disk_index(
                 << std::setw(9) << "Post(T)"
                 << std::setw(9) << "Mem(MB)";
   if (calc_recall_flag) {
-    diskann::cout << std::setw(10) << recall_string << std::endl;
-  } else
-    diskann::cout << std::endl;
+    diskann::cout << std::setw(10) << recall_string;
+  }
+  diskann::cout << std::setw(9) << "PipeSub"
+                << std::setw(9) << "PipeUse%"
+                << std::setw(9) << "PipeWst"
+                << std::setw(9) << "PipeStl"
+                << std::setw(9) << "PipeW"
+                << std::setw(9) << "PipeMax"
+                << std::setw(9) << "PipeAdj" << std::endl;
   diskann::cout
       << "==============================================================="
          "======================================================="
@@ -313,6 +319,48 @@ int search_disk_index(
         stats, query_num, warmup_cnt,
         [](const diskann::QueryStats& stats) { return stats.disk_proc_us; });
 
+    auto mean_pipe_submitted = diskann::get_mean_stats<unsigned>(
+        stats, query_num, warmup_cnt,
+        [](const diskann::QueryStats& stats) { return stats.pipe_graph_submitted; });
+
+    auto mean_pipe_useful = diskann::get_mean_stats<unsigned>(
+        stats, query_num, warmup_cnt,
+        [](const diskann::QueryStats& stats) { return stats.pipe_graph_useful; });
+
+    auto mean_pipe_wasted = diskann::get_mean_stats<unsigned>(
+        stats, query_num, warmup_cnt,
+        [](const diskann::QueryStats& stats) { return stats.pipe_graph_wasted; });
+
+    auto mean_pipe_stale = diskann::get_mean_stats<unsigned>(
+        stats, query_num, warmup_cnt,
+        [](const diskann::QueryStats& stats) { return stats.pipe_stale_candidates; });
+
+    auto mean_pipe_width = diskann::get_mean_stats<float>(
+        stats, query_num, warmup_cnt,
+        [](const diskann::QueryStats& stats) {
+          return stats.pipe_width_samples == 0
+                     ? 0.0f
+                     : static_cast<float>(stats.pipe_width_sum) /
+                           static_cast<float>(stats.pipe_width_samples);
+        });
+
+    auto mean_pipe_width_max = diskann::get_mean_stats<unsigned>(
+        stats, query_num, warmup_cnt,
+        [](const diskann::QueryStats& stats) { return stats.pipe_width_max; });
+
+    auto mean_pipe_width_inc = diskann::get_mean_stats<unsigned>(
+        stats, query_num, warmup_cnt,
+        [](const diskann::QueryStats& stats) { return stats.pipe_width_increases; });
+
+    auto mean_pipe_width_dec = diskann::get_mean_stats<unsigned>(
+        stats, query_num, warmup_cnt,
+        [](const diskann::QueryStats& stats) { return stats.pipe_width_decreases; });
+
+    const float pipe_useful_pct = mean_pipe_submitted == 0
+        ? 0.0f
+        : static_cast<float>(100.0 * mean_pipe_useful / mean_pipe_submitted);
+    const float mean_pipe_adjust = static_cast<float>(mean_pipe_width_inc - mean_pipe_width_dec);
+
     float recall = 0;
     if (calc_recall_flag) {
       recall = diskann::calculate_recall(query_num, gt_ids, gt_dists, gt_dim,
@@ -338,9 +386,15 @@ int search_disk_index(
                   << std::setw(9) << mean_postprocess
                   << std::setw(9) << getProcessPeakRSS();
     if (calc_recall_flag) {
-      diskann::cout << std::setw(10) << recall << std::endl;
-    } else
-      diskann::cout << std::endl;
+      diskann::cout << std::setw(10) << recall;
+    }
+    diskann::cout << std::setw(9) << mean_pipe_submitted
+                  << std::setw(9) << pipe_useful_pct
+                  << std::setw(9) << mean_pipe_wasted
+                  << std::setw(9) << mean_pipe_stale
+                  << std::setw(9) << mean_pipe_width
+                  << std::setw(9) << mean_pipe_width_max
+                  << std::setw(9) << mean_pipe_adjust << std::endl;
     delete[] stats;
   }
 

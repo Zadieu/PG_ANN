@@ -1,4 +1,4 @@
-# Gorgeous Experiment Results
+# PipeGor_ANN Experiment Results
 
 Dataset: SIFT learn
 
@@ -12,7 +12,7 @@ Configuration:
 - Threads: `8`
 - Cache nodes: `0`
 - Page search: enabled
-- Gorgeous graph-replicated mode: enabled
+- PipeGor_ANN graph-replicated mode: enabled
 
 Raw result:
 

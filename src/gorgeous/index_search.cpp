@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <limits>
+#include <mutex>
 #include "logger.h"
 #include "percentile_stats.h"
 #include "deco_index.h"
@@ -86,10 +87,6 @@ namespace diskann {
     const _u64 pipeann_pipe_start = use_auto_pipeann_pipe_start
         ? 0
         : std::max<_u64>(1, std::strtoull(pipeann_pipe_start_env, nullptr, 10));
-    const char *pipeann_pipe_converge_rank_env = std::getenv("GORGEOUS_PIPEANN_PIPE_CONVERGE_RANK");
-    const _u32 pipeann_pipe_converge_rank = pipeann_pipe_converge_rank_env == nullptr
-        ? 5
-        : static_cast<_u32>(std::max<_u64>(1, std::strtoull(pipeann_pipe_converge_rank_env, nullptr, 10)));
     const char *pipeann_pipe_min_env = std::getenv("GORGEOUS_PIPEANN_PIPE_MIN");
     const bool use_auto_pipeann_pipe_min =
         pipeann_pipe_min_env == nullptr ||
@@ -100,20 +97,121 @@ namespace diskann {
         : std::max<_u64>(1, std::strtoull(pipeann_pipe_min_env, nullptr, 10));
     const char *pipeann_pipe_feedback_env = std::getenv("GORGEOUS_PIPEANN_PIPE_FEEDBACK");
     const bool use_pipeann_pipe_feedback = use_pipeann_dynamic_pipe_width &&
-        pipeann_pipe_feedback_env != nullptr &&
-        std::strcmp(pipeann_pipe_feedback_env, "0") != 0 &&
-        std::strcmp(pipeann_pipe_feedback_env, "false") != 0;
-    const char *pipeann_pipe_feedback_window_env = std::getenv("GORGEOUS_PIPEANN_PIPE_FEEDBACK_WINDOW");
-    const _u32 pipeann_pipe_feedback_window = pipeann_pipe_feedback_window_env == nullptr
-        ? 8
-        : static_cast<_u32>(std::max<_u64>(1, std::strtoull(pipeann_pipe_feedback_window_env, nullptr, 10)));
-    const char *pipeann_pipe_feedback_up_env = std::getenv("GORGEOUS_PIPEANN_PIPE_FEEDBACK_UP_RATIO");
-    const float pipeann_pipe_feedback_up_ratio =
-        pipeann_pipe_feedback_up_env == nullptr ? 0.90f : std::strtof(pipeann_pipe_feedback_up_env, nullptr);
-    const char *pipeann_pipe_feedback_down_env = std::getenv("GORGEOUS_PIPEANN_PIPE_FEEDBACK_DOWN_RATIO");
-    const float pipeann_pipe_feedback_down_ratio =
-        pipeann_pipe_feedback_down_env == nullptr ? 0.60f : std::strtof(pipeann_pipe_feedback_down_env, nullptr);
+        (pipeann_pipe_feedback_env == nullptr ||
+         (std::strcmp(pipeann_pipe_feedback_env, "0") != 0 &&
+          std::strcmp(pipeann_pipe_feedback_env, "false") != 0));
+    const char *pipeann_pipe_waste_threshold_env = std::getenv("GORGEOUS_PIPEANN_PIPE_WASTE_THRESHOLD");
+    const float pipeann_pipe_waste_threshold = pipeann_pipe_waste_threshold_env == nullptr
+        ? 0.10f
+        : std::strtof(pipeann_pipe_waste_threshold_env, nullptr);
+    const char *pipeann_resource_aware_env = std::getenv("GORGEOUS_PIPEANN_RESOURCE_AWARE");
+    const bool use_pipeann_resource_aware = use_pipeann_pipe_feedback &&
+        pipeann_resource_aware_env != nullptr &&
+        std::strcmp(pipeann_resource_aware_env, "0") != 0 &&
+        std::strcmp(pipeann_resource_aware_env, "false") != 0;
+    const char *pipeann_pipe_down_waste_threshold_env =
+        std::getenv("GORGEOUS_PIPEANN_PIPE_DOWN_WASTE_THRESHOLD");
+    const float pipeann_pipe_down_waste_threshold =
+        pipeann_pipe_down_waste_threshold_env == nullptr
+            ? 0.35f
+            : std::strtof(pipeann_pipe_down_waste_threshold_env, nullptr);
+    const char *pipeann_pipe_feedback_window_env =
+        std::getenv("GORGEOUS_PIPEANN_PIPE_FEEDBACK_WINDOW");
+    const _u32 pipeann_pipe_feedback_window =
+        pipeann_pipe_feedback_window_env == nullptr
+            ? 8
+            : static_cast<_u32>(std::max<_u64>(
+                  1, std::strtoull(pipeann_pipe_feedback_window_env, nullptr, 10)));
+    const char *pipeann_pipe_min_marker_env = std::getenv("GORGEOUS_PIPEANN_PIPE_MIN_MARKER");
+    const _u32 pipeann_pipe_min_marker = pipeann_pipe_min_marker_env == nullptr
+        ? 5
+        : static_cast<_u32>(std::strtoull(pipeann_pipe_min_marker_env, nullptr, 10));
+    const char *pipeann_resource_threads_env =
+        std::getenv("GORGEOUS_PIPEANN_RESOURCE_THREAD_THRESHOLD");
+    const _u32 pipeann_resource_thread_threshold =
+        pipeann_resource_threads_env == nullptr
+            ? 8
+            : static_cast<_u32>(std::max<_u64>(
+                  1, std::strtoull(pipeann_resource_threads_env, nullptr, 10)));
+    const char *pipeann_resource_mem_l_env =
+        std::getenv("GORGEOUS_PIPEANN_RESOURCE_MEM_L_THRESHOLD");
+    const _u32 pipeann_resource_mem_l_threshold =
+        pipeann_resource_mem_l_env == nullptr
+            ? 1
+            : static_cast<_u32>(std::strtoull(pipeann_resource_mem_l_env, nullptr, 10));
+    const bool pipeann_resource_pressure =
+        use_pipeann_resource_aware &&
+        mem_L >= pipeann_resource_mem_l_threshold &&
+        max_nthreads >= pipeann_resource_thread_threshold;
+    const char *pipeann_resource_adaptive_env =
+        std::getenv("GORGEOUS_PIPEANN_RESOURCE_ADAPTIVE");
+    const bool use_pipeann_resource_adaptive =
+        pipeann_resource_pressure &&
+        (pipeann_resource_adaptive_env == nullptr ||
+         (std::strcmp(pipeann_resource_adaptive_env, "0") != 0 &&
+          std::strcmp(pipeann_resource_adaptive_env, "false") != 0));
+    const bool pipeann_high_thread_pressure = max_nthreads >= 64;
+    const char *pipeann_resource_window_env =
+        std::getenv("GORGEOUS_PIPEANN_RESOURCE_WINDOW");
+    const _u32 pipeann_resource_window =
+        pipeann_resource_window_env == nullptr
+            ? (pipeann_high_thread_pressure ? 16 : 32)
+            : static_cast<_u32>(std::max<_u64>(
+                  1, std::strtoull(pipeann_resource_window_env, nullptr, 10)));
+    const char *pipeann_resource_probe_window_env =
+        std::getenv("GORGEOUS_PIPEANN_RESOURCE_PROBE_WINDOW");
+    const _u32 pipeann_resource_probe_window =
+        pipeann_resource_probe_window_env == nullptr
+            ? (pipeann_high_thread_pressure ? 2 : 8)
+            : static_cast<_u32>(std::max<_u64>(
+                  1, std::strtoull(pipeann_resource_probe_window_env, nullptr, 10)));
+    const char *pipeann_resource_cooldown_env =
+        std::getenv("GORGEOUS_PIPEANN_RESOURCE_COOLDOWN");
+    const _u32 pipeann_resource_cooldown =
+        pipeann_resource_cooldown_env == nullptr
+            ? (pipeann_high_thread_pressure ? 32 * pipeann_resource_window
+                                            : 8 * pipeann_resource_window)
+            : static_cast<_u32>(std::strtoull(pipeann_resource_cooldown_env, nullptr, 10));
+    const char *pipeann_resource_qps_gain_target_env =
+        std::getenv("GORGEOUS_PIPEANN_RESOURCE_QPS_GAIN_TARGET");
+    const float pipeann_resource_qps_gain_target =
+        pipeann_resource_qps_gain_target_env == nullptr
+            ? (pipeann_high_thread_pressure ? 1.02f : 1.00f)
+            : std::strtof(pipeann_resource_qps_gain_target_env, nullptr);
+    const char *pipeann_resource_qps_close_ratio_env =
+        std::getenv("GORGEOUS_PIPEANN_RESOURCE_QPS_CLOSE_RATIO");
+    const float pipeann_resource_qps_close_ratio =
+        pipeann_resource_qps_close_ratio_env == nullptr
+            ? (pipeann_high_thread_pressure ? 1.00f : 0.97f)
+            : std::strtof(pipeann_resource_qps_close_ratio_env, nullptr);
+    const char *pipeann_resource_stale_limit_env =
+        std::getenv("GORGEOUS_PIPEANN_RESOURCE_STALE_LIMIT");
+    const float pipeann_resource_stale_limit =
+        pipeann_resource_stale_limit_env == nullptr
+            ? (pipeann_high_thread_pressure ? 0.01f : 0.10f)
+            : std::strtof(pipeann_resource_stale_limit_env, nullptr);
+    const char *pipeann_resource_refresh_on_windows_env =
+        std::getenv("GORGEOUS_PIPEANN_RESOURCE_REFRESH_ON_WINDOWS");
+    const _u32 pipeann_resource_refresh_on_windows =
+        pipeann_resource_refresh_on_windows_env == nullptr
+            ? (pipeann_high_thread_pressure ? 1 : 4)
+            : static_cast<_u32>(std::max<_u64>(
+                  1, std::strtoull(pipeann_resource_refresh_on_windows_env, nullptr, 10)));
     const bool track_pipeann_states = use_pipeann_state_machine || use_pipeann_state_scheduler;
+
+    std::mutex pipeann_resource_controller_mutex;
+    bool pipeann_controller_has_recent_off_window = false;
+    bool pipeann_controller_pipeline_enabled = !use_pipeann_resource_adaptive;
+    bool pipeann_controller_probe = false;
+    _u32 pipeann_controller_probe_remaining = 0;
+    _u32 pipeann_controller_cooldown_remaining = 0;
+    _u32 pipeann_controller_off_count = 0;
+    _u32 pipeann_controller_on_count = 0;
+    _u32 pipeann_controller_on_windows_since_refresh = 0;
+    double pipeann_controller_on_stale_sum = 0.0;
+    double pipeann_controller_recent_off_qps = 0.0;
+    Timer pipeann_controller_off_timer;
+    Timer pipeann_controller_on_timer;
 
     // atomic pointer to query.
     std::atomic_int cur_task = 0;
@@ -180,6 +278,38 @@ namespace diskann {
         _u64* indices = indices_vec.data() + (task_id * k_search);
         float* distances = distances_vec.data() + (task_id * k_search);
         QueryStats* stats = stats_ptr + task_id;
+        bool use_effective_pipeann_state_scheduler = use_pipeann_state_scheduler;
+        if (use_pipeann_resource_adaptive) {
+          std::lock_guard<std::mutex> guard(pipeann_resource_controller_mutex);
+          if (!pipeann_controller_has_recent_off_window) {
+            use_effective_pipeann_state_scheduler = false;
+          } else if (pipeann_controller_pipeline_enabled) {
+            if (pipeann_controller_on_windows_since_refresh >= pipeann_resource_refresh_on_windows) {
+              pipeann_controller_pipeline_enabled = false;
+              pipeann_controller_has_recent_off_window = false;
+              pipeann_controller_off_count = 0;
+              pipeann_controller_off_timer.reset();
+              pipeann_controller_on_windows_since_refresh = 0;
+              use_effective_pipeann_state_scheduler = false;
+            } else {
+              use_effective_pipeann_state_scheduler = true;
+            }
+          } else if (pipeann_controller_probe && pipeann_controller_probe_remaining > 0) {
+            pipeann_controller_probe_remaining--;
+            use_effective_pipeann_state_scheduler = true;
+          } else if (pipeann_controller_cooldown_remaining > 0) {
+            pipeann_controller_cooldown_remaining--;
+            use_effective_pipeann_state_scheduler = false;
+          } else {
+            pipeann_controller_probe = true;
+            pipeann_controller_probe_remaining = pipeann_resource_probe_window;
+            pipeann_controller_on_count = 0;
+            pipeann_controller_on_stale_sum = 0.0;
+            pipeann_controller_on_timer.reset();
+            pipeann_controller_probe_remaining--;
+            use_effective_pipeann_state_scheduler = true;
+          }
+        }
 
         _mm_prefetch((char *) query1, _MM_HINT_T1);
         // copy query to thread specific aligned and allocated memory (for distance
@@ -245,7 +375,7 @@ namespace diskann {
           if (!candidate.flag) {
             return false;
           }
-          if (!use_pipeann_state_scheduler) {
+          if (!use_effective_pipeann_state_scheduler) {
             return true;
           }
           if (rank >= rank_limit) {
@@ -365,27 +495,27 @@ namespace diskann {
         _u32 n_early_refine_submitted = 0;
         _u32 pipeann_current_pipe_width = static_cast<_u32>(beam_width);
         _u32 pipeann_min_pipe_width = static_cast<_u32>(beam_width);
-        _u32 pipeann_next_width_rank = pipeann_pipe_converge_rank;
-        _u32 pipeann_feedback_events = 0;
-        _u32 pipeann_feedback_useful = 0;
-        if (use_pipeann_dynamic_pipe_width) {
+        _u32 pipeann_feedback_in_pool = 0;
+        _u32 pipeann_feedback_total = 0;
+        _u32 pipeann_feedback_window_in_pool = 0;
+        _u32 pipeann_feedback_window_total = 0;
+        _u32 pipeann_max_marker = 0;
+        if (use_pipeann_dynamic_pipe_width && use_effective_pipeann_state_scheduler) {
           _u64 initial_pipe_width = pipeann_pipe_start;
           if (initial_pipe_width == 0) {
-            initial_pipe_width = beam_width <= 8 || l_search <= beam_width * 4
-                ? (beam_width > 1 ? beam_width - 1 : 1)
-                : std::max<_u64>(4, (beam_width + 1) / 2);
+            initial_pipe_width = std::min<_u64>(4, beam_width);
           }
           pipeann_current_pipe_width = static_cast<_u32>(
               std::max<_u64>(1, std::min<_u64>(beam_width, initial_pipe_width)));
           _u64 min_pipe_width = pipeann_pipe_min;
           if (min_pipe_width == 0) {
-            min_pipe_width = std::min<_u64>(initial_pipe_width, std::min<_u64>(4, beam_width));
+            min_pipe_width = use_pipeann_resource_aware ? 1 : initial_pipe_width;
           }
           pipeann_min_pipe_width = static_cast<_u32>(
               std::max<_u64>(1, std::min<_u64>(pipeann_current_pipe_width, min_pipe_width)));
         }
         std::vector<char*> graph_free_sector_bufs;
-        if (use_pipeann_state_scheduler) {
+        if (use_effective_pipeann_state_scheduler) {
           graph_free_sector_bufs.reserve(MAX_N_SECTOR_READS);
           for (_u32 i = 0; i < MAX_N_SECTOR_READS; ++i) {
             graph_free_sector_bufs.push_back(sector_scratch + i * GR_SECTOR_LEN);
@@ -393,7 +523,7 @@ namespace diskann {
         }
 
         auto pipeann_scheduler_rank_limit = [&]() -> _u32 {
-          if (!use_pipeann_state_scheduler) {
+          if (!use_effective_pipeann_state_scheduler) {
             return cur_list_size;
           }
           const _u64 tight_rank_window = std::max<_u64>(k_search, beam_width * 4);
@@ -406,10 +536,7 @@ namespace diskann {
               std::min<_u64>(cur_list_size, std::min<_u64>(l_search, configured_rank_window)));
         };
 
-        auto update_pipeann_dynamic_pipe_width = [&]() {
-          if (!use_pipeann_dynamic_pipe_width || pipeann_current_pipe_width >= beam_width) {
-            return;
-          }
+        auto pipeann_stable_prefix = [&]() -> _u32 {
           _u32 stable_prefix = 0;
           const _u32 scan_limit = static_cast<_u32>(std::min<_u64>(cur_list_size, l_search));
           for (_u32 rank = 0; rank < scan_limit; ++rank) {
@@ -420,46 +547,65 @@ namespace diskann {
             }
             stable_prefix++;
           }
-          while (pipeann_current_pipe_width < beam_width &&
-                 stable_prefix >= pipeann_next_width_rank) {
-            pipeann_current_pipe_width++;
-            pipeann_next_width_rank += pipeann_pipe_converge_rank;
-          }
+          return stable_prefix;
         };
 
-        auto record_pipeann_graph_io_feedback = [&](unsigned id, bool page_made_progress) {
+        auto record_pipeann_graph_io_feedback = [&](const std::shared_ptr<FrontierNode>& fn) {
+          if (!use_effective_pipeann_state_scheduler) {
+            return;
+          }
+          const float retset_tail_distance = cur_list_size > 0
+              ? retset[cur_list_size - 1].distance
+              : std::numeric_limits<float>::max();
+          const bool in_pool = fn->distance <= retset_tail_distance;
+          if (stats != nullptr) {
+            if (in_pool) {
+              stats->pipe_graph_useful++;
+            } else {
+              stats->pipe_graph_wasted++;
+            }
+          }
           if (!use_pipeann_pipe_feedback) {
             return;
           }
-          bool useful = false;
-          const _u32 rank_limit = pipeann_scheduler_rank_limit();
-          for (_u32 rank = 0; rank < rank_limit; ++rank) {
-            if (retset[rank].id == id) {
-              useful = true;
-              break;
-            }
+          pipeann_feedback_total++;
+          pipeann_feedback_window_total++;
+          if (in_pool) {
+            pipeann_feedback_in_pool++;
+            pipeann_feedback_window_in_pool++;
           }
-          useful = useful && page_made_progress;
-          pipeann_feedback_events++;
-          if (useful) {
-            pipeann_feedback_useful++;
-          }
-          if (pipeann_feedback_events < pipeann_pipe_feedback_window) {
+          pipeann_max_marker = std::max(pipeann_max_marker, pipeann_stable_prefix());
+          if (pipeann_max_marker < pipeann_pipe_min_marker ||
+              pipeann_feedback_window_total < pipeann_pipe_feedback_window) {
             return;
           }
-          const float useful_ratio =
-              static_cast<float>(pipeann_feedback_useful) / static_cast<float>(pipeann_feedback_events);
-          if (useful_ratio <= pipeann_pipe_feedback_down_ratio &&
-              pipeann_current_pipe_width > pipeann_min_pipe_width) {
+          const float waste_ratio =
+              static_cast<float>(pipeann_feedback_window_total - pipeann_feedback_window_in_pool) /
+              static_cast<float>(pipeann_feedback_window_total);
+          const bool should_decrease =
+              use_pipeann_resource_aware &&
+              waste_ratio >= pipeann_pipe_down_waste_threshold &&
+              pipeann_current_pipe_width > pipeann_min_pipe_width;
+          const bool should_increase =
+              (!pipeann_resource_pressure || pipeann_max_marker >= pipeann_pipe_min_marker * 2) &&
+              waste_ratio <= pipeann_pipe_waste_threshold &&
+              pipeann_current_pipe_width < beam_width;
+          if (should_decrease) {
             pipeann_current_pipe_width--;
-            pipeann_next_width_rank += pipeann_pipe_converge_rank;
-          } else if (useful_ratio >= pipeann_pipe_feedback_up_ratio &&
-                     pipeann_current_pipe_width < beam_width) {
+            pipeann_current_pipe_width = std::max<_u32>(pipeann_current_pipe_width, pipeann_min_pipe_width);
+            if (stats != nullptr) {
+              stats->pipe_width_decreases++;
+            }
+          } else if (should_increase) {
             pipeann_current_pipe_width++;
-            pipeann_next_width_rank += pipeann_pipe_converge_rank;
+            pipeann_current_pipe_width = std::max<_u32>(pipeann_current_pipe_width, pipeann_min_pipe_width);
+            pipeann_current_pipe_width = std::min<_u32>(pipeann_current_pipe_width, static_cast<_u32>(beam_width));
+            if (stats != nullptr) {
+              stats->pipe_width_increases++;
+            }
           }
-          pipeann_feedback_events = 0;
-          pipeann_feedback_useful = 0;
+          pipeann_feedback_window_total = 0;
+          pipeann_feedback_window_in_pool = 0;
         };
 
         auto submit_early_refine_reads = [&]() {
@@ -524,10 +670,6 @@ namespace diskann {
             const _u32 pid = fn->pid;
             set_candidate_state(exact_id, PipeCandidateState::kGraphPageReady);
             set_page_state(pid, PipePageState::kGraphPageReady);
-            const _u32 retset_size_before_page = cur_list_size;
-            const float retset_worst_before_page =
-                cur_list_size > 0 ? retset[cur_list_size - 1].distance : std::numeric_limits<float>::max();
-
             unsigned p_size = gp_layout_[pid].size();
             unsigned* p_layout = gp_layout_[pid].data();
             // calculate the approx. dist. in the page
@@ -541,7 +683,7 @@ namespace diskann {
                   continue;
               } else {
                 // replace only the other nodes
-                auto fn = std::make_shared<FrontierNode>(id, pid, index_fid);
+                auto fn = std::make_shared<FrontierNode>(id, pid, index_fid, dist_scratch[j]);
                 frontier.push_back(fn);
                 ftr_id++;
                 if (visited.insert(id).second) {
@@ -557,16 +699,12 @@ namespace diskann {
             for (unsigned j = 0; j < cand_size; ++j) {
               compute_and_push_nbrs(vis_cand[j].second, vis_cand[j].first);
             }
-            const bool page_made_progress =
-                cur_list_size > retset_size_before_page ||
-                (cur_list_size > 0 && retset[cur_list_size - 1].distance < retset_worst_before_page);
             if (stats != nullptr) stats->disk_proc_us += (double) part_timer.elapsed();
-            record_pipeann_graph_io_feedback(exact_id, page_made_progress);
 
             sec_buf2ftr.erase(sector_buf);
             set_candidate_state(exact_id, PipeCandidateState::kExpanded);
             set_page_state(pid, PipePageState::kExpanded);
-            if (use_pipeann_state_scheduler) {
+            if (use_effective_pipeann_state_scheduler) {
               graph_free_sector_bufs.push_back(sector_buf);
             }
             n_proc_in_q--;
@@ -584,6 +722,7 @@ namespace diskann {
                 sector_buffers.push(tmp_bufs[i]);
                 set_candidate_state(graph_iter->second->id, PipeCandidateState::kGraphPageReady);
                 set_page_state(graph_iter->second->pid, PipePageState::kGraphPageReady);
+                record_pipeann_graph_io_feedback(graph_iter->second);
                 n_io_in_q--;
                 n_proc_in_q++;
                 continue;
@@ -637,25 +776,40 @@ namespace diskann {
             submit_early_refine_reads();
           }
 
-          update_pipeann_dynamic_pipe_width();
-          const _u64 graph_pipe_width = use_pipeann_state_scheduler
+          pipeann_max_marker = std::max(pipeann_max_marker, pipeann_stable_prefix());
+          const _u64 graph_pipe_width = use_effective_pipeann_state_scheduler
               ? static_cast<_u64>(pipeann_current_pipe_width)
               : beam_width;
           const _u32 active_disk_buffers = n_io_in_q + n_proc_in_q;
           const _u32 remaining_io_budget =
               num_ios < io_limit ? static_cast<_u32>(io_limit - num_ios) : 0;
-          const bool refill_graph_slots = use_pipelined_graph_io || use_pipeann_state_scheduler;
+          if (use_effective_pipeann_state_scheduler) {
+            const bool pipe_slots_full =
+                active_disk_buffers >= graph_pipe_width || remaining_io_budget == 0;
+            if (stats != nullptr) {
+              stats->pipe_width_sum += static_cast<unsigned>(graph_pipe_width);
+              stats->pipe_width_samples++;
+              stats->pipe_width_max = std::max<unsigned>(stats->pipe_width_max,
+                                                         static_cast<unsigned>(graph_pipe_width));
+              if (pipe_slots_full) {
+                stats->pipe_slot_full++;
+              } else {
+                stats->pipe_slot_empty++;
+              }
+            }
+          }
+          const bool refill_graph_slots = use_pipelined_graph_io || use_effective_pipeann_state_scheduler;
           _u32 dispatch_budget = refill_graph_slots
                                            ? static_cast<_u32>(std::min<_u64>(
                                                  graph_pipe_width - std::min<_u64>(active_disk_buffers, graph_pipe_width),
                                                  remaining_io_budget))
                                            : static_cast<_u32>(std::min<_u64>(beam_width, remaining_io_budget));
-          if (use_pipeann_state_scheduler) {
+          if (use_effective_pipeann_state_scheduler) {
             dispatch_budget = static_cast<_u32>(
                 std::min<_u64>(dispatch_budget, graph_free_sector_bufs.size()));
           }
           const bool should_dispatch =
-              use_pipeann_state_scheduler
+              use_effective_pipeann_state_scheduler
                   ? (dispatch_budget > 0 && n_cached_in_q == 0)
                   : (use_pipelined_graph_io
                          ? (dispatch_budget > 0 && n_cached_in_q == 0 && n_proc_in_q == 0)
@@ -704,24 +858,31 @@ namespace diskann {
                   if (page_visited.insert(pid).second) {
                     num_seen++;
                     disk_seen++;
-                    auto fn = std::make_shared<FrontierNode>(retset[marker].id, pid, index_fid);
+                    auto fn = std::make_shared<FrontierNode>(retset[marker].id, pid, index_fid,
+                                                        retset[marker].distance);
                     frontier.push_back(fn);
                     set_candidate_state(retset[marker].id, PipeCandidateState::kGraphIoSubmitted);
                     set_page_state(pid, PipePageState::kGraphIoSubmitted);
                   } else {
                     set_candidate_state(retset[marker].id, PipeCandidateState::kStale);
+                    if (stats != nullptr) {
+                      stats->pipe_stale_candidates++;
+                    }
                   }
                 }
                 retset[marker].flag = false;
               }
               marker++;
             }
-            if (use_pipeann_state_scheduler && scheduler_rank_limit < cur_list_size) {
+            if (use_effective_pipeann_state_scheduler && scheduler_rank_limit < cur_list_size) {
               for (_u32 stale_rank = scheduler_rank_limit; stale_rank < cur_list_size; ++stale_rank) {
                 if (retset[stale_rank].flag &&
                     get_candidate_state(retset[stale_rank].id) == PipeCandidateState::kInPool) {
                   retset[stale_rank].flag = false;
                   set_candidate_state(retset[stale_rank].id, PipeCandidateState::kStale);
+                  if (stats != nullptr) {
+                    stats->pipe_stale_candidates++;
+                  }
                 }
               }
             }
@@ -734,7 +895,7 @@ namespace diskann {
               n_io_in_q += frontier.size() - ftr_id;
               while(ftr_id < frontier.size()) {
                 char *sector_buf = nullptr;
-                if (use_pipeann_state_scheduler) {
+                if (use_effective_pipeann_state_scheduler) {
                   sector_buf = graph_free_sector_bufs.back();
                   graph_free_sector_bufs.pop_back();
                 } else {
@@ -750,6 +911,9 @@ namespace diskann {
                 read_fids.push_back(frontier[ftr_id]->fid); // equals to 0
                 if (stats != nullptr) {
                   stats->n_ios++;
+                  if (use_effective_pipeann_state_scheduler) {
+                    stats->pipe_graph_submitted++;
+                  }
                 }
                 num_ios++;
                 ftr_id++;
@@ -948,6 +1112,65 @@ namespace diskann {
         if (stats != nullptr) {
           stats->total_us = (double) query_timer.elapsed();
           stats->postprocess_us = (double) part_timer.elapsed();
+        }
+        if (use_pipeann_resource_adaptive && stats != nullptr) {
+          std::lock_guard<std::mutex> guard(pipeann_resource_controller_mutex);
+          if (use_effective_pipeann_state_scheduler) {
+            pipeann_controller_on_stale_sum += static_cast<double>(stats->pipe_stale_candidates);
+            pipeann_controller_on_count++;
+            const _u32 target =
+                pipeann_controller_probe ? pipeann_resource_probe_window : pipeann_resource_window;
+            if (pipeann_controller_on_count >= target && target > 0) {
+              const double elapsed_us =
+                  static_cast<double>(std::max<long long>(1, pipeann_controller_on_timer.elapsed()));
+              const double probe_qps =
+                  (static_cast<double>(pipeann_controller_on_count) * 1000000.0) / elapsed_us;
+              const double avg_stale =
+                  pipeann_controller_on_stale_sum / static_cast<double>(pipeann_controller_on_count);
+              const bool stale_ok =
+                  avg_stale <= static_cast<double>(pipeann_resource_stale_limit);
+              const bool qps_ok =
+                  pipeann_controller_has_recent_off_window &&
+                  probe_qps >= pipeann_controller_recent_off_qps *
+                                   static_cast<double>(pipeann_resource_qps_gain_target);
+              const bool force_close =
+                  pipeann_controller_has_recent_off_window &&
+                  probe_qps < pipeann_controller_recent_off_qps *
+                                  static_cast<double>(pipeann_resource_qps_close_ratio);
+              const bool keep_pipeline = stale_ok && qps_ok;
+              pipeann_controller_pipeline_enabled = keep_pipeline;
+              pipeann_controller_probe = false;
+              pipeann_controller_probe_remaining = 0;
+              pipeann_controller_on_windows_since_refresh++;
+              if (!keep_pipeline || force_close) {
+                pipeann_controller_cooldown_remaining = pipeann_resource_cooldown;
+              }
+              if (pipeann_controller_on_windows_since_refresh >= pipeann_resource_refresh_on_windows) {
+                pipeann_controller_pipeline_enabled = false;
+                pipeann_controller_cooldown_remaining = std::max<_u32>(1, pipeann_resource_window);
+                pipeann_controller_has_recent_off_window = false;
+                pipeann_controller_off_count = 0;
+                pipeann_controller_off_timer.reset();
+                pipeann_controller_on_windows_since_refresh = 0;
+              }
+              pipeann_controller_on_count = 0;
+              pipeann_controller_on_stale_sum = 0.0;
+              pipeann_controller_on_timer.reset();
+            }
+          } else {
+            pipeann_controller_off_count++;
+            if (pipeann_controller_off_count >= pipeann_resource_window) {
+              const double elapsed_us =
+                  static_cast<double>(std::max<long long>(1, pipeann_controller_off_timer.elapsed()));
+              const double avg_qps =
+                  (static_cast<double>(pipeann_controller_off_count) * 1000000.0) / elapsed_us;
+              pipeann_controller_recent_off_qps = avg_qps;
+              pipeann_controller_has_recent_off_window = true;
+              pipeann_controller_off_count = 0;
+              pipeann_controller_off_timer.reset();
+              pipeann_controller_on_windows_since_refresh = 0;
+            }
+          }
         }
       }
       if (early_refine_scratch != nullptr) {

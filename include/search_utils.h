@@ -1,4 +1,5 @@
 #pragma once
+#include <limits>
 #include "utils.h"
 #include "tsl/robin_map.h"
 #include "tsl/robin_set.h"
@@ -112,6 +113,7 @@ namespace diskann {
     unsigned id;
     unsigned pid;
     int fid;
+    float distance;
     char* node_buf;
     char* sector_buf;
     // Pointer to the search path node in the same block.
@@ -123,10 +125,12 @@ namespace diskann {
     // Neighbors discovered, only executed are recorded.
     std::vector<std::shared_ptr<FrontierNode>> nb_;
 
-    FrontierNode(unsigned id, unsigned pid, int fid) {
+    FrontierNode(unsigned id, unsigned pid, int fid,
+                 float distance = std::numeric_limits<float>::max()) {
         this->id = id;
         this->pid = pid;
         this->fid = fid;  // here we consider we have only one file.
+        this->distance = distance;
     }
   };
 

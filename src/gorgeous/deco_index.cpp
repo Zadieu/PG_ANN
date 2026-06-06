@@ -38,7 +38,9 @@ namespace diskann {
   }
 
   float choose_adaptive_dynamic_graph_cache_ratio(_u64 num_points, _u64 data_dim,
-                                                  float mem_graph_use_ratio) {
+                                                  float mem_graph_use_ratio,
+                                                  _u32 mem_L,
+                                                  _u64 num_threads) {
     float ratio = 0.01f;
     if (num_points >= 100000000ULL) {
       ratio = 0.03f;
@@ -60,8 +62,32 @@ namespace diskann {
       ratio -= 0.005f;
     }
 
-    if (ratio < 0.005f) {
-      ratio = 0.005f;
+    // A memory navigation graph already removes many graph-page reads. In that
+    // case the dynamic region should be smaller because its lock/replacement
+    // overhead competes with a smaller amount of saved IO.
+    if (mem_L > 0) {
+      if (mem_L >= 10) {
+        ratio *= 0.50f;
+      } else if (mem_L >= 5) {
+        ratio *= 0.60f;
+      } else {
+        ratio *= 0.75f;
+      }
+      const float mem_nav_cap = mem_L >= 5 ? 0.005f : 0.0075f;
+      ratio = std::min(ratio, mem_nav_cap);
+    }
+
+    // More query threads hide part of the disk latency and increase contention
+    // on the dynamic-cache metadata. Be conservative under high concurrency.
+    if (num_threads >= 32) {
+      ratio *= 0.50f;
+    } else if (num_threads >= 16) {
+      ratio *= 0.75f;
+    }
+
+    const float min_ratio = mem_L > 0 ? 0.0025f : 0.005f;
+    if (ratio < min_ratio) {
+      ratio = min_ratio;
     }
     if (ratio > 0.05f) {
       ratio = 0.05f;
@@ -70,7 +96,9 @@ namespace diskann {
   }
 
   float get_dynamic_graph_cache_ratio(_u64 num_points, _u64 data_dim,
-                                      float mem_graph_use_ratio) {
+                                      float mem_graph_use_ratio,
+                                      _u32 mem_L,
+                                      _u64 num_threads) {
     const char* ratio_env = std::getenv("GORGEOUS_DYNAMIC_GRAPH_CACHE_RATIO");
     if (ratio_env == nullptr) {
       return 0.0f;
@@ -78,11 +106,13 @@ namespace diskann {
     std::string ratio_value(ratio_env);
     if (is_auto_dynamic_graph_cache_ratio(ratio_value)) {
       float ratio = choose_adaptive_dynamic_graph_cache_ratio(
-          num_points, data_dim, mem_graph_use_ratio);
+          num_points, data_dim, mem_graph_use_ratio, mem_L, num_threads);
       std::cout << "auto dynamic graph cache ratio selected: " << ratio
                 << " (num_points=" << num_points
                 << ", data_dim=" << data_dim
-                << ", mem_graph_use_ratio=" << mem_graph_use_ratio << ")"
+                << ", mem_graph_use_ratio=" << mem_graph_use_ratio
+                << ", mem_L=" << mem_L
+                << ", num_threads=" << num_threads << ")"
                 << std::endl;
       return ratio;
     }
@@ -315,7 +345,8 @@ namespace diskann {
   template<typename T>  // graph only contain one page
   void DecoIndex<T>::load_mem_graph(const std::string& disk_graph_prefix,
                                        std::vector<unsigned>& tags,
-                                       float mem_graph_use_ratio) {
+                                       float mem_graph_use_ratio,
+                                       _u32 mem_L) {
     if (mem_graph_use_ratio == 0) {
       return;
     }
@@ -338,7 +369,7 @@ namespace diskann {
     if (mem_graph_use_ratio < 1) {
       n_cached_id = (int) (num_points * mem_graph_use_ratio);
       float dynamic_cache_ratio = get_dynamic_graph_cache_ratio(
-          num_points, data_dim, mem_graph_use_ratio);
+          num_points, data_dim, mem_graph_use_ratio, mem_L, max_nthreads);
       if (n_cached_id > 1 && dynamic_cache_ratio > 0.0f) {
         _u32 total_graph_cache_slots = n_cached_id;
         dynamic_graph_cache_size = static_cast<_u32>(total_graph_cache_slots * dynamic_cache_ratio);

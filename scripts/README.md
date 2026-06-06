@@ -1,6 +1,6 @@
-# Gorgeous System - Scripts
+# PipeGor_ANN - Scripts
 
-This directory contains the configuration and execution scripts for the **Gorgeous** system, an optimized disk-based high-dimensional vector search system.
+This directory contains the configuration and execution scripts for **PipeGor_ANN**, our current integrated disk-based high-dimensional vector search system.
 
 ## Key Parameters
 
@@ -50,7 +50,7 @@ This directory contains the configuration and execution scripts for the **Gorgeo
 - **Usage**: Enables the disk graph cache optimization for better search performance.
 
 #### `DECO_IMPL`
-- **Description**: Whether use Gorgeous' search method. If disabled, the Starling's search will be used.
+- **Description**: Whether use PipeGor_ANN/Gorgeous-style search. If disabled, the Starling's search will be used.
 - **Values**: `0` (disabled) or `1` (enabled)
 - **Default**: `1`
 - **Usage**: Disabled both `DECO_IMPL` and `USE_DISK_GRAPH_CACHE_INDEX` means Starling is used.
@@ -67,7 +67,7 @@ The system generates several output files:
 
 ## Normal Execution Flow
 
-The typical workflow for using Gorgeous involves the following steps:
+The typical workflow for using PipeGor_ANN involves the following steps:
 
 ### 1. Configure Dataset
 Edit `scripts/config_dataset.sh` to set your dataset paths and parameters:
@@ -159,7 +159,7 @@ This executes the search with the configured parameters and outputs results.
 
 ## Comparing Other Baselines
 
-Gorgeous's codebase is extended from Starling, thus Starling and DiskANN could also run under our scripts.
+PipeGor_ANN's codebase is extended from Gorgeous/Starling, thus Starling and DiskANN could also run under our scripts.
 The rest of the parameters are the same as Starling's.
 
 Run with DiskANN's layout
@@ -174,14 +174,14 @@ DECO_IMPL=0
 USE_PAGE_SEARCH=1
 ```
 
-Run with Starling's layout, and Gorgeous' pipelined search.
+Run with Starling's layout, and PipeGor_ANN/Gorgeous pipelined search.
 ```
 DECO_IMPL=1
 USE_DISK_GRAPH_CACHE_INDEX=0
 USE_PAGE_SEARCH=1
 ```
 
-Run with Gorgeous's disk layout, and Gorgeous' pipelined search.
+Run with Gorgeous disk layout, and PipeGor_ANN pipelined search.
 ```
 DECO_IMPL=1
 USE_DISK_GRAPH_CACHE_INDEX=1

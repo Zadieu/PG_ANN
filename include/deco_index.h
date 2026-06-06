@@ -50,7 +50,8 @@ namespace diskann {
 
     DISKANN_DLLEXPORT void load_mem_graph(const std::string& disk_graph_prefix,
                                           std::vector<unsigned>& tags,
-                                          float mem_graph_use_ratio = 1.0);
+                                          float mem_graph_use_ratio = 1.0,
+                                          _u32 mem_L = 0);
 
     DISKANN_DLLEXPORT void load_mem_emb(std::vector<unsigned>& tags,
                                         float mem_emb_use_ratio = 1.0);

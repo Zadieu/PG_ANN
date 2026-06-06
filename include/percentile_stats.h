@@ -37,6 +37,18 @@ namespace diskann {
     unsigned n_ext_cmps = 0;    // # exact cmps
     unsigned n_cache_hits = 0;  // # cache_hits
     unsigned n_hops = 0;        // # search hops
+
+    unsigned pipe_graph_submitted = 0;  // # graph IOs submitted by pipeline
+    unsigned pipe_graph_useful = 0;     // # graph IOs that improved/kept useful frontier
+    unsigned pipe_graph_wasted = 0;     // # graph IOs that did not help the frontier
+    unsigned pipe_stale_candidates = 0; // # candidates dropped as stale
+    unsigned pipe_width_sum = 0;        // sampled pipeline width sum
+    unsigned pipe_width_samples = 0;    // sampled pipeline width count
+    unsigned pipe_width_max = 0;        // max observed pipeline width
+    unsigned pipe_width_increases = 0;  // # feedback/convergence increases
+    unsigned pipe_width_decreases = 0;  // # feedback decreases
+    unsigned pipe_slot_empty = 0;       // # loop samples with free IO slots
+    unsigned pipe_slot_full = 0;        // # loop samples with no free IO slots
   };
 
   template<typename T>
