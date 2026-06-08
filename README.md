@@ -1,92 +1,265 @@
-﻿# PipeGor_ANN: High-Performance Disk-Based Vector Search
+# PipeGor_ANN
 
-`PipeGor_ANN` 是我们当前使用的项目名称，表示在 Gorgeous 基础上继续融合 PipeANN 风格流水线优化后的版本。
+PipeGor_ANN is a disk-resident approximate nearest neighbor search project built
+on top of Gorgeous and extended with a PipeANN-style graph I/O scheduler.
 
-本项目是在 Gorgeous 基础上使用静态缓存 + 动态缓存，并继续引入 PipeANN 风格流水线调度的方案。核心思想是在原论文静态 graph cache 的基础上，划分少量缓存空间作为可替换的动态 Cache，用于捕获查询过程中的热点邻接表，减少 SSD Graph IO，并在保持 Recall@10 的情况下提升 QPS、降低查询延迟。
+The current mainline is intentionally conservative:
 
-
-PipeGor_ANN is a high-performance disk-based Approximate Nearest Neighbor Search (ANNS) system designed to efficiently handle large-scale high-dimensional vector datasets. It is built on Gorgeous and extended with PipeANN-style pipelined search ideas.
-
-> **Note:** If you're using DiskANN for high-dimensional vector search in AI workloads, try PipeGor_ANN for significant performance improvements.
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-Install system dependencies:
-
-```bash
-apt install build-essential libboost-all-dev make cmake g++ libaio-dev libgoogle-perftools-dev clang-format libmkl-full-dev
+```text
+Gorgeous graph-replicated layout
++ PipeANN-style state scheduler
++ dynamic pipe width
++ L-aware pipe-width start
 ```
 
-### Build oneTBB Library
+The project is used to study how runtime pipelining can work with Gorgeous's
+graph-replicated disk layout without introducing excessive speculative I/O.
 
-```bash
-cd graph_partition
-git clone https://github.com/uxlfoundation/oneTBB.git
-cd oneTBB
-cmake --build .
+## Motivation
+
+Gorgeous already performs a form of structural prefetching through its
+graph-replicated layout. A disk page for node `u` contains:
+
+```text
+u exact vector
+u adjacency list
+selected neighbors' adjacency lists
 ```
 
-### Running Benchmarks
+This is different from PipeANN's original setting, where runtime prefetching is
+mainly used to overlap future graph accesses. If PipeANN-style prefetching is
+applied to Gorgeous naively, each wrong prediction may fetch a heavier
+graph-replicated page and may duplicate adjacency information that has already
+been brought back by Gorgeous's layout.
 
-1. Navigate to the `scripts` directory
-2. Modify dataset paths in `config_dataset.sh`
-3. Run the benchmark:
+PipeGor_ANN therefore keeps Gorgeous's graph-replicated layout as the data
+layout foundation and uses a more restrained scheduler:
+
+- issue graph I/O only for candidates that are actually inside the current
+  scheduling window;
+- use dynamic pipe width to avoid over-prefetching at small `L`;
+- use L-aware initial pipe width so low-recall and high-recall searches can use
+  different degrees of overlap;
+- keep refinement on the original batch exact-vector read path.
+
+## Current Mainline
+
+The current tested PipeGor configuration is:
 
 ```bash
-bash run_benchmark.sh [debug/release] [build/build_mem/gp/split_graph/gr_layout/search]
+GORGEOUS_PIPEANN_STATE_SCHEDULER=1
+GORGEOUS_PIPEANN_DYNAMIC_PIPE_WIDTH=1
+GORGEOUS_PIPEANN_L_AWARE_PIPE_START=1
+GORGEOUS_PIPEANN_L_AWARE_LOW_L=12
+GORGEOUS_PIPEANN_L_AWARE_HIGH_L=18
+GORGEOUS_PIPEANN_PIPE_FEEDBACK=1
+GORGEOUS_PIPEANN_PIPE_WASTE_THRESHOLD=0.10
+GORGEOUS_PIPEANN_PIPE_MIN_MARKER=5
 ```
 
-#### Command Arguments
+The graph-replicated search path is implemented mainly in:
 
-| Argument | Description |
-|----------|-------------|
-| `debug/release` | Build mode to run (passed to CMake) |
-| `build` | Build the index |
-| `build_mem` | Build memory index |
-| `gp` | Graph partition given index file |
-| `split_graph` | Generate Graph Index only file |
-| `gr_layout` | Generate Graph-Replicated Storage Layout |
-| `search` | Search the index |
+```text
+src/gorgeous/index_search_dup_graph.cpp
+```
 
-### Configuration
+Older exploratory ideas such as early refinement prefetch, refinement pipeline,
+grouped refinement, rank-ready expansion, and resource-aware pipe shrinking have
+been removed from the graph-replicated mainline to keep the implementation
+focused and reproducible.
 
-Configure datasets and parameters in `config_local.sh`.
+## Repository Layout
 
-For detailed parameter descriptions and execution flows, see [scripts/README.md](scripts/README.md).
+```text
+include/                 Public headers and search utilities
+src/gorgeous/            Gorgeous/PipeGor search implementation
+tests/                   Build/search utilities and executable entry points
+scripts/                 Main benchmark and comparison scripts
+scripts/archive/         Old exploratory scripts kept for reference
+graph_partition/         Graph partitioning and oneTBB-related components
+assets/                  Existing figures used by the original project README
+```
 
-## 🏗️ Architecture & Design
+The most important executable for search experiments is:
 
-<p align="center">
-  <img src="assets/architecture.png" alt="PipeGor_ANN Architecture" width="800">
-</p>
+```text
+build/tests/search_disk_index
+```
 
-### Key Innovation
+## Dependencies
 
-Traditional systems like DiskANN and Starling treat the index graph and full vectors equally, storing them together. PipeGor_ANN inherits Gorgeous's graph-priority design and further combines PipeANN-style pipelining to reduce disk access overhead and improve search efficiency.
+Install the common system dependencies:
 
-### Core Techniques
+```bash
+sudo apt update
+sudo apt install -y \
+  build-essential \
+  cmake \
+  g++ \
+  libaio-dev \
+  libboost-all-dev \
+  libgoogle-perftools-dev \
+  libmkl-full-dev
+```
 
-- **Graph Priority Memory Cache:** Prioritizes graph caching over exact vector storage
-- **Graph Replicated Disk Layout:** Replicate adjacency lists (the index graph) in disk pages instead of padding
-- **Asynchronous Block Prefetch:** Prefetches disk blocks to reduce access latency
-- **Tiny In-Memory Navigation Graph:** Uses a compact (0.5%) memory index for entry point discovery
-- **Flexible Memory Configuration:** Adapts to various memory ratios with improved search efficiency at higher ratios
+The project also depends on oneTBB. In our local setup, oneTBB is already placed
+under the project tree through the existing Gorgeous build structure.
 
-## 📊 Performance Comparison
+## Build
 
-PipeGor_ANN is our current integrated system, built on Gorgeous and extended toward PipeANN-style pipelined search. The original Gorgeous paper reports strong gains over other disk-based systems ([DiskANN](https://github.com/microsoft/DiskANN) and [Starling](https://github.com/zilliztech/starling)) under identical conditions (20% memory ratio, same CPU threads) on four 100-Million datasets:
+From the project root:
 
-<p align="center">
-  <img src="assets/main_result.png" alt="Performance Comparison" width="800">
-</p>
+```bash
+cd /home/dell/projects/PipeGor_ANN
+cmake --build build -j2 --target search_disk_index
+```
 
-## 🔬 Research Paper
+If the build directory does not exist yet, configure it first:
 
-If you use PipeGor_ANN in project discussions or experiments, we recommend naming it as `PipeGor_ANN`. For the original paper citation, please still cite Gorgeous:
+```bash
+cd /home/dell/projects/PipeGor_ANN
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j2 --target search_disk_index
+```
 
-**[Gorgeous: Revisiting the Data Layout for Disk-Resident High-Dimensional Vector Search](https://arxiv.org/abs/2508.15290)**
+## Run The Three-Way Comparison
+
+The main comparison script is:
+
+```text
+scripts/compare_three_way_sift1m_t8.sh
+```
+
+It compares:
+
+```text
+PipeANN baseline
+Gorgeous original baseline
+PipeGor_ANN
+```
+
+Default baseline executable paths:
+
+```text
+PipeANN:
+  /home/dell/projects/PipeANN-official-20260604/PipeANN-main/build/tests/search_disk_index
+
+Gorgeous original:
+  /home/dell/projects/Gorgeous-original-baseline/build/tests/search_disk_index
+
+PipeGor_ANN:
+  /home/dell/projects/PipeGor_ANN/build/tests/search_disk_index
+```
+
+Example SIFT1M run:
+
+```bash
+cd /home/dell/projects/PipeGor_ANN
+
+env \
+  RESULT_ROOT=/home/dell/data/gorgeous/sift1M/three_way_t8 \
+  L_LIST='18 20 24 28 32 40 50 64 80 96 128 160' \
+  MEM_L=10 \
+  THREADS=8 \
+  WIDTH=8 \
+  bash scripts/compare_three_way_sift1m_t8.sh
+```
+
+Each run creates a timestamped directory:
+
+```text
+${RESULT_ROOT}/run_YYYYmmdd_HHMMSS/
+```
+
+Important output files:
+
+```text
+PARAMS.txt
+pipeann.log
+gorgeous_original.log
+pipegor.log
+compare.csv
+```
+
+## Key Script Parameters
+
+```text
+L_LIST
+  Search list depths to test.
+
+THREADS
+  Number of search threads.
+
+WIDTH
+  Beam width / I/O width.
+
+MEM_L
+  Memory index search depth.
+
+PIPEGOR_L_AWARE_LOW_L
+  L value at which PipeGor starts from a smaller pipe width.
+  Default: 12
+
+PIPEGOR_L_AWARE_HIGH_L
+  L value at which PipeGor starts from full beam width.
+  Default: 18
+```
+
+Dataset and index paths can also be overridden through environment variables in
+`scripts/compare_three_way_sift1m_t8.sh`.
+
+## Latest Local SIFT1M Check
+
+After cleanup, we reran PipeGor_ANN against both baselines on SIFT1M with:
+
+```text
+T = 8
+W = 8
+MEM_L = 10
+L = 18 20 24 28 32 40 50 64 80 96 128 160
+```
+
+Representative high-recall results:
+
+```text
+L=64   PipeGor Recall@10 99.43  QPS 2987.69
+       vs PipeANN +34.89%, vs Gorgeous +1.99%
+
+L=96   PipeGor Recall@10 99.81  QPS 2199.52
+       vs PipeANN +42.47%, vs Gorgeous +2.19%
+
+L=128  PipeGor Recall@10 99.91  QPS 1773.50
+       vs PipeANN +55.19%, vs Gorgeous +5.61%
+
+L=160  PipeGor Recall@10 99.96  QPS 1436.05
+       vs PipeANN +52.52%, vs Gorgeous +4.86%
+```
+
+The latest local chart artifacts were generated under the Codex work directory:
+
+```text
+work/final_three_way_cleanup_t8_summary.csv
+work/final_three_way_cleanup_t8_recall.svg
+work/final_three_way_cleanup_t8_qps.svg
+work/final_three_way_cleanup_t8_latency.svg
+```
+
+## Notes For Development
+
+- Keep the graph-replicated mainline simple. New experimental ideas should start
+  behind a small, clearly named branch or script, then be deleted or archived if
+  they do not help.
+- Re-run both baselines whenever comparing performance. The current comparison
+  script intentionally reruns PipeANN and Gorgeous in the same test round.
+- Prefer recall-matched QPS comparisons over only same-`L` comparisons when
+  presenting final results.
+- Use `scripts/archive/` only as historical reference; main experiments should
+  use `scripts/compare_three_way_sift1m_t8.sh`.
+
+## Citation
+
+PipeGor_ANN is an experimental project built on Gorgeous. For the original data
+layout idea, cite Gorgeous:
 
 ```bibtex
 @article{yin2025gorgeous,
@@ -97,7 +270,6 @@ If you use PipeGor_ANN in project discussions or experiments, we recommend namin
 }
 ```
 
+## License
 
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) for details.
+This repository follows the license files included in the project.
