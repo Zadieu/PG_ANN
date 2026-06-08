@@ -649,7 +649,9 @@ namespace diskann {
 
     if (use_graph_rep_index_) {
       std::string graph_cache_fname(disk_graph_rep_index_file);
+      this->load_partition_data(index_prefix, num_points, STARLING_INDEX);
       this->load_partition_data(graph_rep_index_prefix, num_points, GRAPH_CACHE_INDEX);
+      this->index_fid = io_manager->open(disk_index_file, O_DIRECT | O_RDONLY | O_LARGEFILE);
       this->gc_index_fid = io_manager->open(graph_cache_fname, O_DIRECT | O_RDONLY | O_LARGEFILE);
       std::cout << "Graph-replicated mode." << std::endl;
     } else {

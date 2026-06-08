@@ -1,4 +1,5 @@
 #include <immintrin.h>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <limits>
@@ -47,6 +48,42 @@ namespace diskann {
     const char *pipeline_env = std::getenv("GORGEOUS_PIPELINED_GRAPH_IO");
     const bool use_pipelined_graph_io =
         pipeline_env != nullptr && std::strcmp(pipeline_env, "0") != 0 && std::strcmp(pipeline_env, "false") != 0;
+    const char *ordered_graph_pipeline_env =
+        std::getenv("GORGEOUS_ORDERED_GRAPH_PIPELINE");
+    const bool use_ordered_graph_pipeline =
+        ordered_graph_pipeline_env != nullptr &&
+        std::strcmp(ordered_graph_pipeline_env, "0") != 0 &&
+        std::strcmp(ordered_graph_pipeline_env, "false") != 0;
+    const char *ordered_batch_priority_env =
+        std::getenv("GORGEOUS_ORDERED_BATCH_PRIORITY");
+    const bool use_ordered_batch_priority =
+        use_ordered_graph_pipeline &&
+        ordered_batch_priority_env != nullptr &&
+        std::strcmp(ordered_batch_priority_env, "0") != 0 &&
+        std::strcmp(ordered_batch_priority_env, "false") != 0;
+    const char *ordered_refill_at_env =
+        std::getenv("GORGEOUS_ORDERED_REFILL_AT");
+    const _u32 ordered_refill_at =
+        ordered_refill_at_env == nullptr
+            ? 0
+            : static_cast<_u32>(std::strtoull(ordered_refill_at_env,
+                                              nullptr, 10));
+    const char *replication_aware_env =
+        std::getenv("GORGEOUS_REPLICATION_AWARE_PIPELINE");
+    const bool use_replication_aware_pipeline =
+        replication_aware_env != nullptr &&
+        std::strcmp(replication_aware_env, "0") != 0 &&
+        std::strcmp(replication_aware_env, "false") != 0;
+    const char *replication_observe_env =
+        std::getenv("GORGEOUS_REPLICATION_AWARE_OBSERVE_ONLY");
+    const bool use_replication_aware_observe_only =
+        replication_observe_env != nullptr &&
+        std::strcmp(replication_observe_env, "0") != 0 &&
+        std::strcmp(replication_observe_env, "false") != 0;
+    const bool track_replication_aware =
+        use_replication_aware_pipeline || use_replication_aware_observe_only;
+    const bool gate_replication_aware =
+        use_replication_aware_pipeline && !use_replication_aware_observe_only;
     const char *refine_pipeline_env = std::getenv("GORGEOUS_PIPELINED_REFINE_IO");
     const bool use_pipelined_refine_io = refine_pipeline_env != nullptr &&
         std::strcmp(refine_pipeline_env, "0") != 0 && std::strcmp(refine_pipeline_env, "false") != 0;
@@ -60,6 +97,48 @@ namespace diskann {
     const _u32 early_refine_max_io = early_refine_max_io_env == nullptr
         ? 2
         : static_cast<_u32>(std::max<_u64>(1, std::strtoull(early_refine_max_io_env, nullptr, 10)));
+    const char *stable_prefetch_env = std::getenv("GORGEOUS_STABLE_PAGE_PREFETCH");
+    const bool use_stable_page_prefetch =
+        stable_prefetch_env != nullptr &&
+        std::strcmp(stable_prefetch_env, "0") != 0 &&
+        std::strcmp(stable_prefetch_env, "false") != 0;
+    const char *stable_prefetch_width_env =
+        std::getenv("GORGEOUS_STABLE_PREFETCH_WIDTH");
+    const _u32 stable_prefetch_width =
+        stable_prefetch_width_env == nullptr
+            ? 1
+            : static_cast<_u32>(std::max<_u64>(
+                  1, std::strtoull(stable_prefetch_width_env, nullptr, 10)));
+    const char *stable_prefetch_min_age_env =
+        std::getenv("GORGEOUS_STABLE_PREFETCH_MIN_AGE");
+    const _u32 stable_prefetch_min_age =
+        stable_prefetch_min_age_env == nullptr
+            ? 2
+            : static_cast<_u32>(
+                  std::strtoull(stable_prefetch_min_age_env, nullptr, 10));
+    const char *stable_prefetch_rank_env =
+        std::getenv("GORGEOUS_STABLE_PREFETCH_RANK");
+    const _u32 stable_prefetch_rank_limit_config =
+        stable_prefetch_rank_env == nullptr
+            ? 0
+            : static_cast<_u32>(std::max<_u64>(
+                  1, std::strtoull(stable_prefetch_rank_env, nullptr, 10)));
+    const char *stable_prefetch_min_work_env =
+        std::getenv("GORGEOUS_STABLE_PREFETCH_MIN_WORK");
+    const _u32 stable_prefetch_min_work =
+        stable_prefetch_min_work_env == nullptr
+            ? 2
+            : static_cast<_u32>(std::strtoull(stable_prefetch_min_work_env,
+                                              nullptr, 10));
+    const char *stable_prefetch_max_l_env =
+        std::getenv("GORGEOUS_STABLE_PREFETCH_MAX_L");
+    const _u32 stable_prefetch_max_l =
+        stable_prefetch_max_l_env == nullptr
+            ? 0
+            : static_cast<_u32>(
+                  std::strtoull(stable_prefetch_max_l_env, nullptr, 10));
+    const bool stable_prefetch_enabled_for_l =
+        stable_prefetch_max_l == 0 || l_search <= stable_prefetch_max_l;
     const char *pipeann_state_env = std::getenv("GORGEOUS_PIPEANN_STATE_MACHINE");
     const bool use_pipeann_state_machine = pipeann_state_env != nullptr &&
         std::strcmp(pipeann_state_env, "0") != 0 && std::strcmp(pipeann_state_env, "false") != 0;
@@ -87,6 +166,30 @@ namespace diskann {
     const _u64 pipeann_pipe_start = use_auto_pipeann_pipe_start
         ? 0
         : std::max<_u64>(1, std::strtoull(pipeann_pipe_start_env, nullptr, 10));
+    const char *pipeann_l_aware_start_env =
+        std::getenv("GORGEOUS_PIPEANN_L_AWARE_PIPE_START");
+    const bool use_pipeann_l_aware_pipe_start =
+        use_pipeann_dynamic_pipe_width &&
+        pipeann_l_aware_start_env != nullptr &&
+        std::strcmp(pipeann_l_aware_start_env, "0") != 0 &&
+        std::strcmp(pipeann_l_aware_start_env, "false") != 0;
+    const char *pipeann_l_aware_low_env =
+        std::getenv("GORGEOUS_PIPEANN_L_AWARE_LOW_L");
+    const _u64 pipeann_l_aware_low_l =
+        pipeann_l_aware_low_env == nullptr ||
+                std::strcmp(pipeann_l_aware_low_env, "0") == 0
+            ? beam_width * 2
+            : std::max<_u64>(1, std::strtoull(pipeann_l_aware_low_env,
+                                              nullptr, 10));
+    const char *pipeann_l_aware_high_env =
+        std::getenv("GORGEOUS_PIPEANN_L_AWARE_HIGH_L");
+    const _u64 pipeann_l_aware_high_l =
+        pipeann_l_aware_high_env == nullptr ||
+                std::strcmp(pipeann_l_aware_high_env, "0") == 0
+            ? beam_width * 3
+            : std::max<_u64>(pipeann_l_aware_low_l + 1,
+                             std::strtoull(pipeann_l_aware_high_env,
+                                           nullptr, 10));
     const char *pipeann_pipe_min_env = std::getenv("GORGEOUS_PIPEANN_PIPE_MIN");
     const bool use_auto_pipeann_pipe_min =
         pipeann_pipe_min_env == nullptr ||
@@ -244,6 +347,8 @@ namespace diskann {
       // this is a ring queue for storing sector buffers ptr.
       // when read done, push a sector_buf to here, wait for execute
       CircleQueue<char*> sector_buffers(MAX_N_SECTOR_READS);
+      std::vector<char*> priority_sector_buffers;
+      priority_sector_buffers.reserve(MAX_N_SECTOR_READS);
       // pre-allocated buffer, will clear up each iter/step.
       std::vector<char*> tmp_bufs(MAX_N_SECTOR_READS);
       std::vector<int> read_fids(MAX_N_SECTOR_READS);
@@ -253,12 +358,24 @@ namespace diskann {
       CircleQueue<CachedGraphNode> cached_node(MAX_N_SECTOR_READS);
       char *early_refine_scratch = nullptr;
       std::vector<char*> early_refine_free_bufs;
+      char *stable_prefetch_scratch = nullptr;
+      std::vector<char*> stable_prefetch_free_bufs;
       if (use_early_refine_prefetch) {
         diskann::alloc_aligned((void **) &early_refine_scratch,
                                early_refine_depth * (_u64) GR_SECTOR_LEN, 4096);
         early_refine_free_bufs.reserve(early_refine_depth);
         for (_u64 i = 0; i < early_refine_depth; i++) {
           early_refine_free_bufs.push_back(early_refine_scratch + i * GR_SECTOR_LEN);
+        }
+      }
+      if (use_stable_page_prefetch && stable_prefetch_enabled_for_l) {
+        diskann::alloc_aligned((void **) &stable_prefetch_scratch,
+                               stable_prefetch_width * (_u64) GR_SECTOR_LEN,
+                               4096);
+        stable_prefetch_free_bufs.reserve(stable_prefetch_width);
+        for (_u64 i = 0; i < stable_prefetch_width; i++) {
+          stable_prefetch_free_bufs.push_back(stable_prefetch_scratch +
+                                              i * GR_SECTOR_LEN);
         }
       }
 
@@ -344,9 +461,22 @@ namespace diskann {
         full_retset.reserve(4096);
         tsl::robin_map<unsigned, PipeCandidateState> candidate_state;
         tsl::robin_map<unsigned, PipePageState> page_state;
+        tsl::robin_set<unsigned> adj_expanded;
+        tsl::robin_map<unsigned, _u32> stable_prefetch_age;
+        tsl::robin_set<unsigned> stable_prefetch_inflight_pages;
+        tsl::robin_set<char*> stable_prefetch_processing_bufs;
+        _u32 stable_prefetch_in_q = 0;
         if (track_pipeann_states) {
           candidate_state.reserve(l_search * 2);
           page_state.reserve(l_search * 2);
+        }
+        if (track_replication_aware) {
+          adj_expanded.reserve(l_search * 4);
+        }
+        if (use_stable_page_prefetch && stable_prefetch_enabled_for_l) {
+          stable_prefetch_age.reserve(l_search * 2);
+          stable_prefetch_inflight_pages.reserve(beam_width * 2);
+          stable_prefetch_processing_bufs.reserve(beam_width * 2);
         }
 
         auto set_candidate_state = [&](unsigned id, PipeCandidateState state) {
@@ -382,6 +512,33 @@ namespace diskann {
             return false;
           }
           return get_candidate_state(candidate.id) == PipeCandidateState::kInPool;
+        };
+        auto mark_adj_expanded = [&](unsigned id) {
+          if (track_replication_aware) {
+            adj_expanded.insert(id);
+          }
+        };
+        auto replication_aware_candidate_seen = [&](unsigned id) -> bool {
+          if (!track_replication_aware) {
+            return false;
+          }
+          return adj_expanded.find(id) != adj_expanded.end();
+        };
+        auto should_skip_replication_covered_candidate = [&](unsigned id) -> bool {
+          if (!replication_aware_candidate_seen(id)) {
+            return false;
+          }
+          if (stats != nullptr) {
+            stats->pipe_rep_adj_hits++;
+          }
+          if (!gate_replication_aware) {
+            return false;
+          }
+          set_candidate_state(id, PipeCandidateState::kExpanded);
+          if (stats != nullptr) {
+            stats->pipe_rep_adj_skipped++;
+          }
+          return true;
         };
         // lambda to batch compute query<-> node distances in PQ space
         auto compute_pq_dists = [this, pq_coord_scratch, pq_dists](const unsigned *ids,
@@ -427,6 +584,7 @@ namespace diskann {
         };
 
         auto compute_and_push_nbrs = [&](const char *node_buf, const unsigned node_id) {
+          mark_adj_expanded(node_id);
           unsigned *node_nbrs = OFFSET_TO_NODE_NHOOD(node_buf);
           unsigned nnbrs = *(node_nbrs++);
           if (dynamic_graph_cache_size > 0) {
@@ -484,6 +642,14 @@ namespace diskann {
 
         // map unfinished sector_buf to the frontier node.
         tsl::robin_map<char*, std::shared_ptr<FrontierNode>> sec_buf2ftr;
+        tsl::robin_map<char*, std::shared_ptr<FrontierNode>>
+            stable_prefetch_buf2ftr;
+        tsl::robin_map<unsigned, std::pair<char*, std::shared_ptr<FrontierNode>>>
+            stable_prefetch_ready_pages;
+        if (use_stable_page_prefetch && stable_prefetch_enabled_for_l) {
+          stable_prefetch_buf2ftr.reserve(beam_width * 2);
+          stable_prefetch_ready_pages.reserve(beam_width * 2);
+        }
         tsl::robin_map<char*, unsigned> early_refine_buf2pid;
         tsl::robin_set<unsigned> early_refine_seen_pages;
 
@@ -503,7 +669,25 @@ namespace diskann {
         if (use_pipeann_dynamic_pipe_width && use_effective_pipeann_state_scheduler) {
           _u64 initial_pipe_width = pipeann_pipe_start;
           if (initial_pipe_width == 0) {
-            initial_pipe_width = std::min<_u64>(4, beam_width);
+            if (use_pipeann_l_aware_pipe_start) {
+              const _u64 low_width =
+                  std::max<_u64>(1, std::min<_u64>(beam_width, beam_width / 2));
+              if (l_search <= pipeann_l_aware_low_l) {
+                initial_pipe_width = low_width;
+              } else if (l_search >= pipeann_l_aware_high_l) {
+                initial_pipe_width = beam_width;
+              } else {
+                const double ratio =
+                    static_cast<double>(l_search - pipeann_l_aware_low_l) /
+                    static_cast<double>(pipeann_l_aware_high_l -
+                                        pipeann_l_aware_low_l);
+                initial_pipe_width = static_cast<_u64>(std::ceil(
+                    static_cast<double>(low_width) +
+                    ratio * static_cast<double>(beam_width - low_width)));
+              }
+            } else {
+              initial_pipe_width = std::min<_u64>(4, beam_width);
+            }
           }
           pipeann_current_pipe_width = static_cast<_u32>(
               std::max<_u64>(1, std::min<_u64>(beam_width, initial_pipe_width)));
@@ -654,12 +838,180 @@ namespace diskann {
           }
         };
 
+        auto submit_stable_page_prefetch = [&]() {
+          if (!use_stable_page_prefetch || !stable_prefetch_enabled_for_l ||
+              use_pipelined_graph_io ||
+              use_effective_pipeann_state_scheduler ||
+              stable_prefetch_in_q + stable_prefetch_ready_pages.size() >=
+                  stable_prefetch_width ||
+              stable_prefetch_free_bufs.empty() ||
+              n_io_in_q > 0 ||
+              (n_proc_in_q + n_cached_in_q) < stable_prefetch_min_work ||
+              num_ios >= io_limit) {
+            return;
+          }
+
+          const _u32 configured_rank_limit =
+              stable_prefetch_rank_limit_config == 0
+                  ? static_cast<_u32>(beam_width)
+                  : stable_prefetch_rank_limit_config;
+          const _u32 rank_limit = static_cast<_u32>(std::min<_u64>(
+              cur_list_size, std::min<_u64>(l_search, configured_rank_limit)));
+
+          for (_u32 rank = 0; rank < rank_limit; ++rank) {
+            if (!retset[rank].flag ||
+                get_candidate_state(retset[rank].id) !=
+                    PipeCandidateState::kInPool) {
+              continue;
+            }
+
+            const unsigned id = retset[rank].id;
+            if (should_skip_replication_covered_candidate(id)) {
+              retset[rank].flag = false;
+              continue;
+            }
+            if (node_in_mem_pos(id) != INF) {
+              continue;
+            }
+            const unsigned pid = id2page_[id];
+            if (page_visited.find(pid) != page_visited.end()) {
+              continue;
+            }
+            if (stable_prefetch_inflight_pages.find(pid) !=
+                    stable_prefetch_inflight_pages.end() ||
+                stable_prefetch_ready_pages.find(pid) !=
+                    stable_prefetch_ready_pages.end()) {
+              continue;
+            }
+
+            _u32 &age = stable_prefetch_age[id];
+            age++;
+            if (age < stable_prefetch_min_age) {
+              continue;
+            }
+
+            char *sector_buf = stable_prefetch_free_bufs.back();
+            stable_prefetch_free_bufs.pop_back();
+            const _u64 offset = (static_cast<_u64>(pid + 1)) * GR_SECTOR_LEN;
+
+            frontier_read_reqs.clear();
+            read_fids.clear();
+            frontier_read_reqs.push_back(
+                AlignedRead(offset, GR_SECTOR_LEN, sector_buf));
+            read_fids.push_back(index_fid);
+
+            auto fn = std::make_shared<FrontierNode>(
+                id, pid, index_fid, retset[rank].distance);
+            stable_prefetch_buf2ftr.insert({sector_buf, fn});
+            stable_prefetch_inflight_pages.insert(pid);
+
+            const int submitted =
+                io_manager->submit_read_reqs(frontier_read_reqs, read_fids,
+                                             ctx);
+            if (submitted > 0) {
+              n_io_in_q += submitted;
+              stable_prefetch_in_q += submitted;
+              num_ios += submitted;
+              if (stats != nullptr) {
+                stats->n_ios += submitted;
+                stats->pipe_graph_submitted += submitted;
+              }
+            } else {
+              stable_prefetch_buf2ftr.erase(sector_buf);
+              stable_prefetch_inflight_pages.erase(pid);
+              stable_prefetch_free_bufs.push_back(sector_buf);
+            }
+            return;
+          }
+        };
+
+        auto collect_completed_reads = [&](unsigned min_r) {
+          if (n_io_in_q + n_early_refine_io_in_q == 0) {
+            return;
+          }
+          part_timer.reset();
+          int n_read_blks = io_manager->get_events(
+              ctx, min_r, n_io_in_q + n_early_refine_io_in_q, tmp_bufs);
+          for (int i = n_read_blks - 1; i >= 0; i--) {
+            auto graph_iter = sec_buf2ftr.find(tmp_bufs[i]);
+            if (graph_iter != sec_buf2ftr.end()) {
+              if (use_ordered_batch_priority) {
+                priority_sector_buffers.push_back(tmp_bufs[i]);
+              } else {
+                sector_buffers.push(tmp_bufs[i]);
+              }
+              set_candidate_state(graph_iter->second->id,
+                                  PipeCandidateState::kGraphPageReady);
+              set_page_state(graph_iter->second->pid,
+                             PipePageState::kGraphPageReady);
+              record_pipeann_graph_io_feedback(graph_iter->second);
+              n_io_in_q--;
+              n_proc_in_q++;
+              continue;
+            }
+            auto stable_iter = stable_prefetch_buf2ftr.find(tmp_bufs[i]);
+            if (stable_iter != stable_prefetch_buf2ftr.end()) {
+              const unsigned pid = stable_iter->second->pid;
+              stable_prefetch_ready_pages[pid] =
+                  std::make_pair(tmp_bufs[i], stable_iter->second);
+              stable_prefetch_buf2ftr.erase(stable_iter);
+              stable_prefetch_inflight_pages.erase(pid);
+              if (stable_prefetch_in_q > 0) {
+                stable_prefetch_in_q--;
+              }
+              n_io_in_q--;
+              continue;
+            }
+            auto refine_iter = early_refine_buf2pid.find(tmp_bufs[i]);
+            if (refine_iter != early_refine_buf2pid.end()) {
+              process_exact_page_for_visited(tmp_bufs[i],
+                                             refine_iter->second);
+              early_refine_buf2pid.erase(refine_iter);
+              early_refine_free_bufs.push_back(tmp_bufs[i]);
+              n_early_refine_io_in_q--;
+              continue;
+            }
+          }
+          if (stats != nullptr) {
+            stats->read_disk_us += (double) part_timer.elapsed();
+          }
+        };
+
+        auto pop_ready_graph_sector = [&]() -> char* {
+          if (!use_ordered_batch_priority ||
+              priority_sector_buffers.empty()) {
+            return sector_buffers.get();
+          }
+          size_t best_idx = 0;
+          float best_distance = std::numeric_limits<float>::max();
+          for (size_t i = 0; i < priority_sector_buffers.size(); ++i) {
+            auto graph_iter = sec_buf2ftr.find(priority_sector_buffers[i]);
+            const float distance =
+                graph_iter == sec_buf2ftr.end()
+                    ? std::numeric_limits<float>::max()
+                    : graph_iter->second->distance;
+            if (distance < best_distance) {
+              best_distance = distance;
+              best_idx = i;
+            }
+          }
+          char *sector_buf = priority_sector_buffers[best_idx];
+          priority_sector_buffers[best_idx] = priority_sector_buffers.back();
+          priority_sector_buffers.pop_back();
+          return sector_buf;
+        };
+
         while (num_ios < io_limit || n_io_in_q > 0 || n_proc_in_q > 0 ||
                n_cached_in_q > 0 || n_early_refine_io_in_q > 0) {
 
+          if (use_ordered_graph_pipeline && n_proc_in_q > 0 &&
+              n_io_in_q + n_early_refine_io_in_q > 0) {
+            collect_completed_reads(0);
+          }
+
           if (n_proc_in_q > 0) {
             part_timer.reset();
-            auto sector_buf = sector_buffers.get();
+            auto sector_buf = pop_ready_graph_sector();
             if (sec_buf2ftr.find(sector_buf) == sec_buf2ftr.end()) {
               std::cout << "(bug) read error!" << std::endl;
               exit(-1);
@@ -704,7 +1056,9 @@ namespace diskann {
             sec_buf2ftr.erase(sector_buf);
             set_candidate_state(exact_id, PipeCandidateState::kExpanded);
             set_page_state(pid, PipePageState::kExpanded);
-            if (use_effective_pipeann_state_scheduler) {
+            if (stable_prefetch_processing_bufs.erase(sector_buf) > 0) {
+              stable_prefetch_free_bufs.push_back(sector_buf);
+            } else if (use_effective_pipeann_state_scheduler) {
               graph_free_sector_bufs.push_back(sector_buf);
             }
             n_proc_in_q--;
@@ -713,30 +1067,7 @@ namespace diskann {
           if (n_io_in_q + n_early_refine_io_in_q > 0) {
             unsigned min_r = 0;
             if (n_proc_in_q == 0) min_r = 1;
-            part_timer.reset();
-            int n_read_blks = io_manager->get_events(
-                ctx, min_r, n_io_in_q + n_early_refine_io_in_q, tmp_bufs);
-            for (int i = n_read_blks - 1; i >= 0; i--) {
-              auto graph_iter = sec_buf2ftr.find(tmp_bufs[i]);
-              if (graph_iter != sec_buf2ftr.end()) {
-                sector_buffers.push(tmp_bufs[i]);
-                set_candidate_state(graph_iter->second->id, PipeCandidateState::kGraphPageReady);
-                set_page_state(graph_iter->second->pid, PipePageState::kGraphPageReady);
-                record_pipeann_graph_io_feedback(graph_iter->second);
-                n_io_in_q--;
-                n_proc_in_q++;
-                continue;
-              }
-              auto refine_iter = early_refine_buf2pid.find(tmp_bufs[i]);
-              if (refine_iter != early_refine_buf2pid.end()) {
-                process_exact_page_for_visited(tmp_bufs[i], refine_iter->second);
-                early_refine_buf2pid.erase(refine_iter);
-                early_refine_free_bufs.push_back(tmp_bufs[i]);
-                n_early_refine_io_in_q--;
-                continue;
-              }
-            }
-            if (stats != nullptr) stats->read_disk_us += (double) part_timer.elapsed();
+            collect_completed_reads(min_r);
           }
 
           // calculate in memory node.
@@ -767,10 +1098,13 @@ namespace diskann {
               const float nbor_dist = dist_scratch[m];
               add_to_retset(nbor_id, nbor_dist, true);
             }
+            mark_adj_expanded(cn.id);
             set_candidate_state(cn.id, PipeCandidateState::kExpanded);
             n_cached_in_q--;
             if (stats != nullptr) stats->cache_proc_us += (double) part_timer.elapsed();
           }
+
+          submit_stable_page_prefetch();
 
           if (n_io_in_q > 0 || n_proc_in_q > 0 || n_cached_in_q > 0) {
             submit_early_refine_reads();
@@ -813,7 +1147,14 @@ namespace diskann {
                   ? (dispatch_budget > 0 && n_cached_in_q == 0)
                   : (use_pipelined_graph_io
                          ? (dispatch_budget > 0 && n_cached_in_q == 0 && n_proc_in_q == 0)
-                         : (n_io_in_q == 0 && n_cached_in_q == 0 && n_proc_in_q < beam_width / 2));
+                         : (n_io_in_q == 0 && n_cached_in_q == 0 &&
+                            n_proc_in_q <
+                                (use_ordered_graph_pipeline &&
+                                         ordered_refill_at > 0
+                                     ? std::min<_u32>(
+                                           ordered_refill_at,
+                                           static_cast<_u32>(beam_width))
+                                     : static_cast<_u32>(beam_width / 2))));
           if (should_dispatch) {
             part_timer.reset();
             // clear iteration state
@@ -828,22 +1169,28 @@ namespace diskann {
             // only the free disk slots with candidates that are still in-pool.
             while (marker < scheduler_rank_limit && num_seen < beam_width && disk_seen < dispatch_budget) {
               if (candidate_ready_for_graph_dispatch(retset[marker], marker, scheduler_rank_limit)) {
-                unsigned mem_pos = node_in_mem_pos(retset[marker].id);
+                const unsigned candidate_id = retset[marker].id;
+                if (should_skip_replication_covered_candidate(candidate_id)) {
+                  retset[marker].flag = false;
+                  marker++;
+                  continue;
+                }
+                unsigned mem_pos = node_in_mem_pos(candidate_id);
                 if (mem_pos != INF) {
                   CachedGraphNode cn;
-                  cn.id = retset[marker].id;
+                  cn.id = candidate_id;
                   if (dynamic_graph_cache_size == 0 || mem_pos < dynamic_graph_cache_start) {
                     cn.cache_pos = mem_pos;
                     cached_node.push(cn);
-                    set_candidate_state(retset[marker].id, PipeCandidateState::kCacheReady);
+                    set_candidate_state(candidate_id, PipeCandidateState::kCacheReady);
                     num_seen++;
                     n_cached_in_q++;
                     if (stats != nullptr) {
                       stats->n_cache_hits++;
                     }
-                  } else if (copy_mem_graph_neighbors(retset[marker].id, mem_pos, cn.nbrs)) {
+                  } else if (copy_mem_graph_neighbors(candidate_id, mem_pos, cn.nbrs)) {
                     cached_node.push(cn);
-                    set_candidate_state(retset[marker].id, PipeCandidateState::kCacheReady);
+                    set_candidate_state(candidate_id, PipeCandidateState::kCacheReady);
                     num_seen++;
                     n_cached_in_q++;
                     if (stats != nullptr) {
@@ -854,17 +1201,47 @@ namespace diskann {
                   }
                 }
                 if (mem_pos == INF) {
-                  auto pid = id2page_[retset[marker].id];
-                  if (page_visited.insert(pid).second) {
+                  auto pid = id2page_[candidate_id];
+                  auto stable_ready_iter =
+                      stable_prefetch_ready_pages.find(pid);
+                  if (stable_ready_iter !=
+                      stable_prefetch_ready_pages.end()) {
+                    if (page_visited.insert(pid).second) {
+                      num_seen++;
+                      disk_seen++;
+                      char *sector_buf = stable_ready_iter->second.first;
+                      auto fn = std::make_shared<FrontierNode>(
+                          candidate_id, pid, index_fid,
+                          retset[marker].distance);
+                      sec_buf2ftr.insert({sector_buf, fn});
+                      stable_prefetch_processing_bufs.insert(sector_buf);
+                      if (use_ordered_batch_priority) {
+                        priority_sector_buffers.push_back(sector_buf);
+                      } else {
+                        sector_buffers.push(sector_buf);
+                      }
+                      n_proc_in_q++;
+                      if (stats != nullptr) {
+                        stats->pipe_graph_useful++;
+                      }
+                    } else {
+                      stable_prefetch_free_bufs.push_back(
+                          stable_ready_iter->second.first);
+                      if (stats != nullptr) {
+                        stats->pipe_graph_wasted++;
+                      }
+                    }
+                    stable_prefetch_ready_pages.erase(stable_ready_iter);
+                  } else if (page_visited.insert(pid).second) {
                     num_seen++;
                     disk_seen++;
-                    auto fn = std::make_shared<FrontierNode>(retset[marker].id, pid, index_fid,
+                    auto fn = std::make_shared<FrontierNode>(candidate_id, pid, index_fid,
                                                         retset[marker].distance);
                     frontier.push_back(fn);
-                    set_candidate_state(retset[marker].id, PipeCandidateState::kGraphIoSubmitted);
+                    set_candidate_state(candidate_id, PipeCandidateState::kGraphIoSubmitted);
                     set_page_state(pid, PipePageState::kGraphIoSubmitted);
                   } else {
-                    set_candidate_state(retset[marker].id, PipeCandidateState::kStale);
+                    set_candidate_state(candidate_id, PipeCandidateState::kStale);
                     if (stats != nullptr) {
                       stats->pipe_stale_candidates++;
                     }
@@ -929,10 +1306,23 @@ namespace diskann {
           }
 
         }
+        if (!stable_prefetch_ready_pages.empty()) {
+          if (stats != nullptr) {
+            stats->pipe_graph_wasted +=
+                static_cast<unsigned>(stable_prefetch_ready_pages.size());
+          }
+          for (auto &ready_page : stable_prefetch_ready_pages) {
+            stable_prefetch_free_bufs.push_back(ready_page.second.first);
+          }
+          stable_prefetch_ready_pages.clear();
+        }
         part_timer.reset();
 
         // deperated here!
         frontier.clear();
+        Timer refine_timer;
+        double refine_io_wait_us = 0.0;
+        double refine_exact_us = 0.0;
 
         // done traversal, start read exact embedding.
         _u32 l_idx = 0;
@@ -979,15 +1369,21 @@ namespace diskann {
             if (cached_id_bufs.size() != 0) {
               for (_u64 i = 0; i < cached_id_bufs.size(); i++) {
                 _mm_prefetch((char *) cached_id_bufs[i].second, _MM_HINT_T0);
+                Timer exact_timer;
                 compute_exact_dists_and_push(cached_id_bufs[i].second, cached_id_bufs[i].first);
+                refine_exact_us += (double) exact_timer.elapsed();
               }
             }
             while (n_ops > 0) {
+              Timer io_wait_timer;
               int n_read_blks = io_manager->get_events(ctx, 1, n_ops, tmp_bufs);
+              refine_io_wait_us += (double) io_wait_timer.elapsed();
               n_ops -= n_read_blks;
               for (int i = 0; i < n_read_blks; i++) {
                 auto sector_buf = tmp_bufs[i];
+                Timer exact_timer;
                 process_refine_page(sector_buf, sec_buf2pid[sector_buf]);
+                refine_exact_us += (double) exact_timer.elapsed();
               }
             }
           }
@@ -1038,25 +1434,32 @@ namespace diskann {
           while (l_idx < embedding_search_L || n_refine_io_in_q > 0 || cached_refine_idx < cached_id_bufs.size()) {
             while (cached_refine_idx < cached_id_bufs.size()) {
               _mm_prefetch((char *) cached_id_bufs[cached_refine_idx].second, _MM_HINT_T0);
+              Timer exact_timer;
               compute_exact_dists_and_push(cached_id_bufs[cached_refine_idx].second,
                                            cached_id_bufs[cached_refine_idx].first);
+              refine_exact_us += (double) exact_timer.elapsed();
               cached_refine_idx++;
             }
 
             if (n_refine_io_in_q > 0) {
               const bool no_submit_capacity = static_cast<_u64>(n_refine_io_in_q) >= refine_io_depth;
               int min_r = (l_idx >= embedding_search_L || no_submit_capacity) ? 1 : 0;
+              Timer io_wait_timer;
               int n_read_blks = io_manager->get_events(ctx, min_r, n_refine_io_in_q, tmp_bufs);
+              refine_io_wait_us += (double) io_wait_timer.elapsed();
               n_refine_io_in_q -= n_read_blks;
               for (int i = 0; i < n_read_blks; i++) {
                 auto sector_buf = tmp_bufs[i];
+                Timer exact_timer;
                 process_refine_page(sector_buf, sec_buf2pid[sector_buf]);
+                refine_exact_us += (double) exact_timer.elapsed();
                 sec_buf2pid.erase(sector_buf);
               }
             }
             submit_refine_reads();
           }
         }
+        const double refine_us = (double) refine_timer.elapsed();
 
         // clear the data.
         frontier_read_reqs.clear();
@@ -1078,6 +1481,7 @@ namespace diskann {
         page_visited.clear();
 
         // re-sort by distance
+        Timer sort_timer;
         std::sort(full_retset.begin(), full_retset.end(),
                   [](const Neighbor &left, const Neighbor &right) {
                     return left.distance < right.distance;
@@ -1108,10 +1512,15 @@ namespace diskann {
           diskann::cerr << "The number of unique ids is less than topk" << std::endl;
           exit(1);
         }
+        const double sort_us = (double) sort_timer.elapsed();
 
         if (stats != nullptr) {
           stats->total_us = (double) query_timer.elapsed();
           stats->postprocess_us = (double) part_timer.elapsed();
+          stats->refine_us = (float) refine_us;
+          stats->sort_us = (float) sort_us;
+          stats->refine_io_wait_us = (float) refine_io_wait_us;
+          stats->refine_exact_us = (float) refine_exact_us;
         }
         if (use_pipeann_resource_adaptive && stats != nullptr) {
           std::lock_guard<std::mutex> guard(pipeann_resource_controller_mutex);
@@ -1175,6 +1584,9 @@ namespace diskann {
       }
       if (early_refine_scratch != nullptr) {
         diskann::aligned_free((void *) early_refine_scratch);
+      }
+      if (stable_prefetch_scratch != nullptr) {
+        diskann::aligned_free((void *) stable_prefetch_scratch);
       }
     });
   }

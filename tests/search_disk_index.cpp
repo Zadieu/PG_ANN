@@ -189,7 +189,11 @@ int search_disk_index(
                 << std::setw(9) << "PipeStl"
                 << std::setw(9) << "PipeW"
                 << std::setw(9) << "PipeMax"
-                << std::setw(9) << "PipeAdj" << std::endl;
+                << std::setw(9) << "PipeAdj"
+                << std::setw(10) << "Refine(T)"
+                << std::setw(9) << "Sort(T)"
+                << std::setw(10) << "RefIO(T)"
+                << std::setw(12) << "RefExact(T)" << std::endl;
   diskann::cout
       << "==============================================================="
          "======================================================="
@@ -299,6 +303,22 @@ int search_disk_index(
         stats, query_num, warmup_cnt,
         [](const diskann::QueryStats& stats) { return stats.postprocess_us; });
 
+    auto mean_refine_time = diskann::get_mean_stats<float>(
+        stats, query_num, warmup_cnt,
+        [](const diskann::QueryStats& stats) { return stats.refine_us; });
+
+    auto mean_sort_time = diskann::get_mean_stats<float>(
+        stats, query_num, warmup_cnt,
+        [](const diskann::QueryStats& stats) { return stats.sort_us; });
+
+    auto mean_refine_io_wait_time = diskann::get_mean_stats<float>(
+        stats, query_num, warmup_cnt,
+        [](const diskann::QueryStats& stats) { return stats.refine_io_wait_us; });
+
+    auto mean_refine_exact_time = diskann::get_mean_stats<float>(
+        stats, query_num, warmup_cnt,
+        [](const diskann::QueryStats& stats) { return stats.refine_exact_us; });
+
     auto mean_dispatch_time = diskann::get_mean_stats<float>(
         stats, query_num, warmup_cnt,
         [](const diskann::QueryStats& stats) { return stats.dispatch_us; });
@@ -356,6 +376,14 @@ int search_disk_index(
         stats, query_num, warmup_cnt,
         [](const diskann::QueryStats& stats) { return stats.pipe_width_decreases; });
 
+    auto mean_pipe_rep_adj_hits = diskann::get_mean_stats<unsigned>(
+        stats, query_num, warmup_cnt,
+        [](const diskann::QueryStats& stats) { return stats.pipe_rep_adj_hits; });
+
+    auto mean_pipe_rep_adj_skipped = diskann::get_mean_stats<unsigned>(
+        stats, query_num, warmup_cnt,
+        [](const diskann::QueryStats& stats) { return stats.pipe_rep_adj_skipped; });
+
     const float pipe_useful_pct = mean_pipe_submitted == 0
         ? 0.0f
         : static_cast<float>(100.0 * mean_pipe_useful / mean_pipe_submitted);
@@ -394,7 +422,13 @@ int search_disk_index(
                   << std::setw(9) << mean_pipe_stale
                   << std::setw(9) << mean_pipe_width
                   << std::setw(9) << mean_pipe_width_max
-                  << std::setw(9) << mean_pipe_adjust << std::endl;
+                  << std::setw(9) << mean_pipe_adjust
+                  << std::setw(10) << mean_refine_time
+                  << std::setw(9) << mean_sort_time
+                  << std::setw(10) << mean_refine_io_wait_time
+                  << std::setw(12) << mean_refine_exact_time
+                  << std::setw(12) << mean_pipe_rep_adj_hits
+                  << std::setw(12) << mean_pipe_rep_adj_skipped << std::endl;
     delete[] stats;
   }
 

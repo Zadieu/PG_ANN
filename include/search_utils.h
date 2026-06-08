@@ -149,12 +149,12 @@ namespace diskann {
     }
 
     void push(T data) {
-      data_[head_] = data;
+      data_[head_] = std::move(data);
       head_ = (head_ + 1) % size_;
     }
 
     T get() {
-      T data = data_[tail_];
+      T data = std::move(data_[tail_]);
       tail_ = (tail_ + 1) % size_;
       return data;
     }

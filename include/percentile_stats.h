@@ -24,6 +24,10 @@ namespace diskann {
     float cpu_us = 0;    // total time spent in CPU
     float preprocess_us = 0;    // total time spent for pre process (in-mem nev)
     float postprocess_us = 0;    // total time spent for post process (sort and lim-k)
+    float refine_us = 0;    // refinement IO and exact distance compute time
+    float sort_us = 0;      // result sort, dedup, and top-k copy time
+    float refine_io_wait_us = 0;  // time waiting for refinement IO completions
+    float refine_exact_us = 0;    // exact distance/page processing time in refinement
 
     float dispatch_us = 0;    // total time spent for dispatch nodes
     float read_disk_us = 0;    // total time spent for read disk process
@@ -49,6 +53,8 @@ namespace diskann {
     unsigned pipe_width_decreases = 0;  // # feedback decreases
     unsigned pipe_slot_empty = 0;       // # loop samples with free IO slots
     unsigned pipe_slot_full = 0;        // # loop samples with no free IO slots
+    unsigned pipe_rep_adj_hits = 0;     // # graph candidates whose adjacency was already expanded
+    unsigned pipe_rep_adj_skipped = 0;  // # graph candidates skipped by replication-aware gating
   };
 
   template<typename T>
