@@ -158,6 +158,40 @@ namespace diskann {
         pipeann_dynamic_pipe_env != nullptr &&
         std::strcmp(pipeann_dynamic_pipe_env, "0") != 0 &&
         std::strcmp(pipeann_dynamic_pipe_env, "false") != 0;
+    const char *pipelined_graph_dynamic_env =
+        std::getenv("GORGEOUS_PIPELINED_GRAPH_DYNAMIC_WIDTH");
+    const bool use_pipelined_graph_dynamic_width =
+        use_pipelined_graph_io && !use_pipeann_state_scheduler &&
+        pipelined_graph_dynamic_env != nullptr &&
+        std::strcmp(pipelined_graph_dynamic_env, "0") != 0 &&
+        std::strcmp(pipelined_graph_dynamic_env, "false") != 0;
+    const char *pipelined_graph_pipe_max_env =
+        std::getenv("GORGEOUS_PIPELINED_GRAPH_PIPE_MAX");
+    const bool use_auto_pipelined_graph_pipe_max =
+        pipelined_graph_pipe_max_env == nullptr ||
+        std::strcmp(pipelined_graph_pipe_max_env, "0") == 0 ||
+        std::strcmp(pipelined_graph_pipe_max_env, "auto") == 0;
+    const _u64 configured_pipelined_graph_pipe_max =
+        use_auto_pipelined_graph_pipe_max
+            ? 0
+            : std::max<_u64>(
+                  1, std::strtoull(pipelined_graph_pipe_max_env, nullptr, 10));
+    const char *pipelined_graph_qd_budget_env =
+        std::getenv("GORGEOUS_PIPELINED_GRAPH_QD_BUDGET");
+    const _u64 pipelined_graph_qd_budget =
+        pipelined_graph_qd_budget_env == nullptr
+            ? 256
+            : std::max<_u64>(
+                  1, std::strtoull(pipelined_graph_qd_budget_env, nullptr, 10));
+    const char *pipelined_graph_ramp_step_env =
+        std::getenv("GORGEOUS_PIPELINED_GRAPH_RAMP_STEP");
+    const _u32 pipelined_graph_ramp_step =
+        pipelined_graph_ramp_step_env == nullptr ||
+                std::strcmp(pipelined_graph_ramp_step_env, "0") == 0 ||
+                std::strcmp(pipelined_graph_ramp_step_env, "auto") == 0
+            ? 0
+            : static_cast<_u32>(std::max<_u64>(
+                  1, std::strtoull(pipelined_graph_ramp_step_env, nullptr, 10)));
     const char *pipeann_pipe_start_env = std::getenv("GORGEOUS_PIPEANN_PIPE_START");
     const bool use_auto_pipeann_pipe_start =
         pipeann_pipe_start_env == nullptr ||
@@ -222,12 +256,12 @@ namespace diskann {
         std::getenv("GORGEOUS_PIPEANN_PIPE_FEEDBACK_WINDOW");
     const _u32 pipeann_pipe_feedback_window =
         pipeann_pipe_feedback_window_env == nullptr
-            ? 8
+            ? 4
             : static_cast<_u32>(std::max<_u64>(
                   1, std::strtoull(pipeann_pipe_feedback_window_env, nullptr, 10)));
     const char *pipeann_pipe_min_marker_env = std::getenv("GORGEOUS_PIPEANN_PIPE_MIN_MARKER");
     const _u32 pipeann_pipe_min_marker = pipeann_pipe_min_marker_env == nullptr
-        ? 5
+        ? 2
         : static_cast<_u32>(std::strtoull(pipeann_pipe_min_marker_env, nullptr, 10));
     const char *pipeann_resource_threads_env =
         std::getenv("GORGEOUS_PIPEANN_RESOURCE_THREAD_THRESHOLD");
@@ -653,12 +687,60 @@ namespace diskann {
         tsl::robin_map<char*, unsigned> early_refine_buf2pid;
         tsl::robin_set<unsigned> early_refine_seen_pages;
 
+        auto pipelined_graph_pipe_max_width = [&]() -> _u32 {
+          _u64 pipe_max = beam_width;
+          if (use_pipelined_graph_dynamic_width) {
+            if (use_auto_pipelined_graph_pipe_max) {
+              const _u64 thread_cap = std::max<_u64>(
+                  2, pipelined_graph_qd_budget /
+                         std::max<_u64>(1, static_cast<_u64>(max_nthreads)));
+              pipe_max = std::min<_u64>(beam_width, thread_cap);
+            } else {
+              pipe_max = std::min<_u64>(beam_width,
+                                        configured_pipelined_graph_pipe_max);
+            }
+          }
+          return static_cast<_u32>(
+              std::max<_u64>(1, std::min<_u64>(beam_width, pipe_max)));
+        }();
+
+        auto pipeann_slow_start_width = [&]() -> _u32 {
+          _u64 initial_pipe_width = pipeann_pipe_start;
+          if (initial_pipe_width == 0) {
+            if (use_pipeann_l_aware_pipe_start) {
+              const _u64 low_width = std::min<_u64>(beam_width, 4);
+              const _u64 high_width = std::min<_u64>(beam_width, 6);
+              if (l_search <= pipeann_l_aware_low_l) {
+                initial_pipe_width = low_width;
+              } else if (l_search >= pipeann_l_aware_high_l) {
+                initial_pipe_width = high_width;
+              } else {
+                const double ratio =
+                    static_cast<double>(l_search - pipeann_l_aware_low_l) /
+                    static_cast<double>(pipeann_l_aware_high_l -
+                                        pipeann_l_aware_low_l);
+                initial_pipe_width = static_cast<_u64>(std::ceil(
+                    static_cast<double>(low_width) +
+                    ratio * static_cast<double>(high_width - low_width)));
+              }
+            } else {
+              initial_pipe_width = std::min<_u64>(beam_width, 4);
+            }
+          }
+          return static_cast<_u32>(
+              std::max<_u64>(1, std::min<_u64>(beam_width, initial_pipe_width)));
+        };
+
         // these data are count seperately
         _u32 n_io_in_q = 0; // how many io left
         _u32 n_cached_in_q = 0; // how many proc left
         _u32 n_proc_in_q = 0; // how many proc left
         _u32 n_early_refine_io_in_q = 0;
         _u32 n_early_refine_submitted = 0;
+        _u32 pipelined_graph_current_pipe_width = use_pipelined_graph_dynamic_width
+            ? std::min<_u32>(pipeann_slow_start_width(),
+                             pipelined_graph_pipe_max_width)
+            : static_cast<_u32>(beam_width);
         _u32 pipeann_current_pipe_width = static_cast<_u32>(beam_width);
         _u32 pipeann_min_pipe_width = static_cast<_u32>(beam_width);
         _u32 pipeann_feedback_in_pool = 0;
@@ -667,33 +749,12 @@ namespace diskann {
         _u32 pipeann_feedback_window_total = 0;
         _u32 pipeann_max_marker = 0;
         if (use_pipeann_dynamic_pipe_width && use_effective_pipeann_state_scheduler) {
-          _u64 initial_pipe_width = pipeann_pipe_start;
-          if (initial_pipe_width == 0) {
-            if (use_pipeann_l_aware_pipe_start) {
-              const _u64 low_width =
-                  std::max<_u64>(1, std::min<_u64>(beam_width, beam_width / 2));
-              if (l_search <= pipeann_l_aware_low_l) {
-                initial_pipe_width = low_width;
-              } else if (l_search >= pipeann_l_aware_high_l) {
-                initial_pipe_width = beam_width;
-              } else {
-                const double ratio =
-                    static_cast<double>(l_search - pipeann_l_aware_low_l) /
-                    static_cast<double>(pipeann_l_aware_high_l -
-                                        pipeann_l_aware_low_l);
-                initial_pipe_width = static_cast<_u64>(std::ceil(
-                    static_cast<double>(low_width) +
-                    ratio * static_cast<double>(beam_width - low_width)));
-              }
-            } else {
-              initial_pipe_width = std::min<_u64>(4, beam_width);
-            }
-          }
+          _u64 initial_pipe_width = pipeann_slow_start_width();
           pipeann_current_pipe_width = static_cast<_u32>(
               std::max<_u64>(1, std::min<_u64>(beam_width, initial_pipe_width)));
           _u64 min_pipe_width = pipeann_pipe_min;
           if (min_pipe_width == 0) {
-            min_pipe_width = use_pipeann_resource_aware ? 1 : initial_pipe_width;
+            min_pipe_width = 1;
           }
           pipeann_min_pipe_width = static_cast<_u32>(
               std::max<_u64>(1, std::min<_u64>(pipeann_current_pipe_width, min_pipe_width)));
@@ -767,7 +828,6 @@ namespace diskann {
               static_cast<float>(pipeann_feedback_window_total - pipeann_feedback_window_in_pool) /
               static_cast<float>(pipeann_feedback_window_total);
           const bool should_decrease =
-              use_pipeann_resource_aware &&
               waste_ratio >= pipeann_pipe_down_waste_threshold &&
               pipeann_current_pipe_width > pipeann_min_pipe_width;
           const bool should_increase =
@@ -1113,11 +1173,13 @@ namespace diskann {
           pipeann_max_marker = std::max(pipeann_max_marker, pipeann_stable_prefix());
           const _u64 graph_pipe_width = use_effective_pipeann_state_scheduler
               ? static_cast<_u64>(pipeann_current_pipe_width)
-              : beam_width;
+              : (use_pipelined_graph_dynamic_width
+                     ? static_cast<_u64>(pipelined_graph_current_pipe_width)
+                     : beam_width);
           const _u32 active_disk_buffers = n_io_in_q + n_proc_in_q;
           const _u32 remaining_io_budget =
               num_ios < io_limit ? static_cast<_u32>(io_limit - num_ios) : 0;
-          if (use_effective_pipeann_state_scheduler) {
+          if (use_effective_pipeann_state_scheduler || use_pipelined_graph_dynamic_width) {
             const bool pipe_slots_full =
                 active_disk_buffers >= graph_pipe_width || remaining_io_budget == 0;
             if (stats != nullptr) {
@@ -1288,7 +1350,7 @@ namespace diskann {
                 read_fids.push_back(frontier[ftr_id]->fid); // equals to 0
                 if (stats != nullptr) {
                   stats->n_ios++;
-                  if (use_effective_pipeann_state_scheduler) {
+                  if (use_effective_pipeann_state_scheduler || use_pipelined_graph_io) {
                     stats->pipe_graph_submitted++;
                   }
                 }
@@ -1296,6 +1358,20 @@ namespace diskann {
                 ftr_id++;
               }
               io_manager->submit_read_reqs(frontier_read_reqs, read_fids, ctx);
+              if (use_pipelined_graph_dynamic_width &&
+                  pipelined_graph_current_pipe_width <
+                      pipelined_graph_pipe_max_width) {
+                const _u32 pipe_width_step =
+                    pipelined_graph_ramp_step == 0
+                        ? std::max<_u32>(1, static_cast<_u32>(beam_width / 4))
+                        : pipelined_graph_ramp_step;
+                pipelined_graph_current_pipe_width = std::min<_u32>(
+                    pipelined_graph_pipe_max_width,
+                    pipelined_graph_current_pipe_width + pipe_width_step);
+                if (stats != nullptr) {
+                  stats->pipe_width_increases++;
+                }
+              }
               if (stats != nullptr) stats->read_disk_us += (double) part_timer.elapsed();
             }
             if (n_io_in_q > 0 || n_proc_in_q > 0 || n_cached_in_q > 0) {

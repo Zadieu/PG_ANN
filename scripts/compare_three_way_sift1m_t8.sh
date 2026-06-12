@@ -3,7 +3,7 @@ set -euo pipefail
 
 PIPEANN_EXE="${PIPEANN_EXE:-/home/dell/projects/PipeANN-official-20260604/PipeANN-main/build/tests/search_disk_index}"
 PIPEANN_BUILD_MEM_EXE="${PIPEANN_BUILD_MEM_EXE:-/home/dell/projects/PipeANN-official-20260604/PipeANN-main/build/tests/build_memory_index}"
-GORGEOUS_EXE="${GORGEOUS_EXE:-/home/dell/projects/Gorgeous-original-baseline/build/tests/search_disk_index}"
+GORGEOUS_EXE="${GORGEOUS_EXE:-/home/dell/projects/Gorgeous-baseline/build/tests/search_disk_index}"
 PIPEGOR_EXE="${PIPEGOR_EXE:-/home/dell/projects/PipeGor_ANN/build/tests/search_disk_index}"
 
 THREADS="${THREADS:-8}"
@@ -29,7 +29,7 @@ GORGEOUS_DISK_FILE="${GORGEOUS_DISK_FILE:-/home/dell/data/gorgeous/sift1M/M4_R64
 GORGEOUS_MEM_INDEX="${GORGEOUS_MEM_INDEX:-/home/dell/data/gorgeous/sift1M/M4_R64_L128/_mem.index}"
 GORGEOUS_MEM_SAMPLE="${GORGEOUS_MEM_SAMPLE:-/home/dell/data/gorgeous/sift1M/M4_R64_L128/_sample_data.bin}"
 GORGEOUS_DISK_GRAPH="${GORGEOUS_DISK_GRAPH:-/home/dell/data/gorgeous/sift1M/M4_R64_L128/GRAPH/}"
-GORGEOUS_GRAPH_REP="${GORGEOUS_GRAPH_REP:-/home/dell/data/gorgeous/sift1M/M4_R64_L128/GRAPH_CACHE_INDEX/}"
+GORGEOUS_GRAPH_REP_COMPAT="${GORGEOUS_GRAPH_REP_COMPAT:-/home/dell/data/gorgeous/sift1M/M4_R64_L128/GRAPH_CACHE_INDEX/}"
 GORGEOUS_USE_RATIO="${GORGEOUS_USE_RATIO:-0.3}"
 GORGEOUS_PQ_RATIO="${GORGEOUS_PQ_RATIO:-1.0}"
 
@@ -80,7 +80,6 @@ COMMON_GORGEOUS_ARGS=(
   --pq_ratio "${GORGEOUS_PQ_RATIO}"
   --disk_file_path "${GORGEOUS_DISK_FILE}"
   --disk_graph_prefix "${GORGEOUS_DISK_GRAPH}"
-  --graph_rep_index_prefix "${GORGEOUS_GRAPH_REP}"
   --deco_impl 1
   --mem_graph_use_ratio 0.0
   --mem_emb_use_ratio 0.0
@@ -113,7 +112,7 @@ PipeGor_ANN:
   dynamic width = 1
   L-aware pipe start = 1
   L-aware low/high L = ${PIPEGOR_L_AWARE_LOW_L}/${PIPEGOR_L_AWARE_HIGH_L}
-  graph_rep_index = 1
+  graph_rep_index = 0
 EOF
 
 ensure_pipeann_mem_index
@@ -148,25 +147,37 @@ env \
   GORGEOUS_EARLY_REFINE_PREFETCH=0 \
   "${GORGEOUS_EXE}" \
     "${COMMON_GORGEOUS_ARGS[@]}" \
+    --graph_rep_index_prefix "${GORGEOUS_GRAPH_REP_COMPAT}" \
     --result_path "${RUN_DIR}/original/result" \
     --use_graph_rep_index 0 > "${GORGEOUS_LOG}" 2>&1
 
 echo "[RUN] PipeGor_ANN"
 env \
   GORGEOUS_DYNAMIC_GRAPH_CACHE_RATIO=0 \
-  GORGEOUS_PIPEANN_STATE_SCHEDULER=1 \
+  GORGEOUS_PIPEANN_STATE_MACHINE=0 \
+  GORGEOUS_PIPEANN_STATE_SCHEDULER=0 \
   GORGEOUS_PIPEANN_SCHEDULER_WINDOW=auto \
-  GORGEOUS_PIPEANN_DYNAMIC_PIPE_WIDTH=1 \
+  GORGEOUS_PIPEANN_DYNAMIC_PIPE_WIDTH=0 \
+  GORGEOUS_PIPEANN_PIPE_START=auto \
+  GORGEOUS_PIPEANN_PIPE_MIN=1 \
   GORGEOUS_PIPEANN_L_AWARE_PIPE_START=1 \
   GORGEOUS_PIPEANN_L_AWARE_LOW_L="${PIPEGOR_L_AWARE_LOW_L}" \
   GORGEOUS_PIPEANN_L_AWARE_HIGH_L="${PIPEGOR_L_AWARE_HIGH_L}" \
   GORGEOUS_PIPEANN_PIPE_WASTE_THRESHOLD=0.10 \
-  GORGEOUS_PIPEANN_PIPE_MIN_MARKER=5 \
+  GORGEOUS_PIPEANN_PIPE_DOWN_WASTE_THRESHOLD=0.35 \
+  GORGEOUS_PIPEANN_PIPE_FEEDBACK_WINDOW=4 \
+  GORGEOUS_PIPEANN_PIPE_MIN_MARKER=2 \
   GORGEOUS_PIPEANN_PIPE_FEEDBACK=1 \
+  GORGEOUS_PIPEANN_RESOURCE_ADAPTIVE=0 \
+  GORGEOUS_PIPELINED_GRAPH_IO=1 \
+  GORGEOUS_PIPELINED_GRAPH_DYNAMIC_WIDTH=1 \
+  GORGEOUS_PIPELINED_GRAPH_PIPE_MAX=auto \
+  GORGEOUS_PIPELINED_GRAPH_QD_BUDGET=256 \
+  GORGEOUS_PIPELINED_GRAPH_RAMP_STEP=auto \
   "${PIPEGOR_EXE}" \
     "${COMMON_GORGEOUS_ARGS[@]}" \
     --result_path "${RUN_DIR}/pipegor/result" \
-    --use_graph_rep_index 1 > "${PIPEGOR_LOG}" 2>&1
+    --use_graph_rep_index 0 > "${PIPEGOR_LOG}" 2>&1
 
 python3 - "${PIPEANN_LOG}" "${GORGEOUS_LOG}" "${PIPEGOR_LOG}" "${RUN_DIR}/compare.csv" <<'PY'
 import csv

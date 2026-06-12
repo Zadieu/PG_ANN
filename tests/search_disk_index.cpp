@@ -530,8 +530,9 @@ int main(int argc, char** argv) {
                        "The path of the disk file (_disk.index in the original DiskANN)");
     desc.add_options()("disk_graph_prefix", po::value<std::string>(&disk_graph_prefix)->required(),
                        "graph prefix");
-    desc.add_options()("graph_rep_index_prefix", po::value<std::string>(&graph_rep_index_prefix)->required(),
-                       "graph cache index prefix");
+    desc.add_options()("graph_rep_index_prefix",
+                       po::value<std::string>(&graph_rep_index_prefix)->default_value(std::string("")),
+                       "graph cache index prefix; required only when --use_graph_rep_index=1");
     desc.add_options()("mem_index_path", po::value<std::string>(&mem_index_path)->default_value(""),
                        "The prefix path of the mem_index");
     desc.add_options()("mem_sample_path", po::value<std::string>(&mem_sample_path)->default_value(""),
@@ -558,6 +559,11 @@ int main(int argc, char** argv) {
     po::notify(vm);
   } catch (const std::exception& ex) {
     std::cerr << ex.what() << '\n';
+    return -1;
+  }
+
+  if (use_graph_rep_index && graph_rep_index_prefix.empty()) {
+    std::cerr << "--graph_rep_index_prefix is required when --use_graph_rep_index=1" << std::endl;
     return -1;
   }
 
