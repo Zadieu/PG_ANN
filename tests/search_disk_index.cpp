@@ -69,7 +69,14 @@ int search_disk_index(
     const bool use_graph_rep_index = false,
     const float mem_graph_use_ratio = 1.0,
     const float mem_emb_use_ratio = 1.0,
-    const float emb_search_ratio = 1.0) {
+    const float emb_search_ratio = 1.0,
+    const bool enable_delta = false,
+    const std::string& delta_wal_path = std::string(),
+    const _u64 delta_max_points = 0,
+    const _u32 delta_fsync_every = 100,
+    const _u32 delta_fsync_interval_ms = 100,
+    const _u64 delete_filter_slack = 0,
+    const std::string& delta_ops_path = std::string()) {
   diskann::cout << "Search parameters: #threads: " << num_threads << ", ";
   if (beamwidth <= 0)
     diskann::cout << "beamwidth to be optimized for each L value" << std::flush;
@@ -139,6 +146,13 @@ int search_disk_index(
       }
       _decoIndex->load_mem_graph(disk_graph_prefix, tags, mem_graph_use_ratio, mem_L);
       _decoIndex->load_mem_emb(tags, mem_emb_use_ratio);
+    }
+    if (enable_delta) {
+      _decoIndex->load_delta_wal(delta_wal_path, delta_max_points,
+                                 delta_fsync_every,
+                                 delta_fsync_interval_ms,
+                                 delete_filter_slack);
+      _decoIndex->apply_delta_ops_file(delta_ops_path);
     }
   } else {
     if (mem_L) {
@@ -228,16 +242,30 @@ int search_disk_index(
     // std::function/std::mem_fn for less switching and function calling overhead
     if (deco_impl && !use_graph_rep_index) {
       // Gorgeous with Starling layout
-      _decoIndex->page_search(
-        query, query_num, query_aligned_dim, recall_at, mem_L, L, 
-        query_result_ids_64, query_result_dists[test_id],
-        beamwidth, search_io_limit, pq_ratio, emb_search_ratio, stats);
+      if (enable_delta) {
+        _decoIndex->page_search_with_delta(
+          query, query_num, query_aligned_dim, recall_at, mem_L, L,
+          query_result_ids_64, query_result_dists[test_id],
+          beamwidth, search_io_limit, pq_ratio, emb_search_ratio, stats);
+      } else {
+        _decoIndex->page_search(
+          query, query_num, query_aligned_dim, recall_at, mem_L, L,
+          query_result_ids_64, query_result_dists[test_id],
+          beamwidth, search_io_limit, pq_ratio, emb_search_ratio, stats);
+      }
     } else if (deco_impl && use_graph_rep_index) {
       // Gorgeous graph replicated
-      _decoIndex->page_search_dup_graph(
-        query, query_num, query_aligned_dim, recall_at, mem_L, L, 
-        query_result_ids_64, query_result_dists[test_id],
-        beamwidth, search_io_limit, pq_ratio, emb_search_ratio, stats);
+      if (enable_delta) {
+        _decoIndex->page_search_dup_graph_with_delta(
+          query, query_num, query_aligned_dim, recall_at, mem_L, L,
+          query_result_ids_64, query_result_dists[test_id],
+          beamwidth, search_io_limit, pq_ratio, emb_search_ratio, stats);
+      } else {
+        _decoIndex->page_search_dup_graph(
+          query, query_num, query_aligned_dim, recall_at, mem_L, L,
+          query_result_ids_64, query_result_dists[test_id],
+          beamwidth, search_io_limit, pq_ratio, emb_search_ratio, stats);
+      }
     } else {
       if (use_page_search) {
         // Starling
@@ -470,6 +498,13 @@ int main(int argc, char** argv) {
   float mem_graph_use_ratio = 0.0;
   float mem_emb_use_ratio = 0.0;
   float emb_search_ratio = 1.0;
+  bool enable_delta = false;
+  std::string delta_wal_path;
+  std::string delta_ops_path;
+  _u64 delta_max_points = 0;
+  _u32 delta_fsync_every = 100;
+  _u32 delta_fsync_interval_ms = 100;
+  _u64 delete_filter_slack = 0;
   _u64 sector_len;
 
   po::options_description desc{"Arguments"};
@@ -549,6 +584,20 @@ int main(int argc, char** argv) {
                        "ratio of using memory emb");
     desc.add_options()("emb_search_ratio", po::value<float>(&emb_search_ratio)->default_value(1.0f),
                        "ratio of embedding search when using memory graph");
+    desc.add_options()("enable_delta", po::value<bool>(&enable_delta)->default_value(0),
+                       "Enable append-only Delta overlay for online writes");
+    desc.add_options()("delta_wal_path", po::value<std::string>(&delta_wal_path)->default_value(""),
+                       "Delta WAL path; required when --enable_delta=1");
+    desc.add_options()("delta_max_points", po::value<_u64>(&delta_max_points)->default_value(0),
+                       "Max live Delta points; 0 uses min(10000, 1% of base)");
+    desc.add_options()("delta_fsync_every", po::value<_u32>(&delta_fsync_every)->default_value(100),
+                       "Delta WAL fsync after this many appended records; 0 disables count-based fsync");
+    desc.add_options()("delta_fsync_interval_ms", po::value<_u32>(&delta_fsync_interval_ms)->default_value(100),
+                       "Delta WAL fsync after this many milliseconds; 0 disables time-based fsync");
+    desc.add_options()("delete_filter_slack", po::value<_u64>(&delete_filter_slack)->default_value(0),
+                       "Extra base candidates fetched when tombstones exist; 0 uses max(32, 2*K)");
+    desc.add_options()("delta_ops_path", po::value<std::string>(&delta_ops_path)->default_value(""),
+                       "Optional text file of Delta ops to append before search: insert <tag|auto> <vector...> or delete <tag>");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -596,6 +645,14 @@ int main(int argc, char** argv) {
   if (!use_page_search && deco_impl) {
     std::cout << "[Warning] deco_impl not support diskann." << std::endl;
   }
+  if (enable_delta && !deco_impl) {
+    std::cout << "Delta overlay is currently supported only with --deco_impl=1." << std::endl;
+    return -1;
+  }
+  if (enable_delta && delta_wal_path.empty()) {
+    std::cout << "--delta_wal_path is required when --enable_delta=1." << std::endl;
+    return -1;
+  }
   if (mem_graph_use_ratio > 1.0 || mem_graph_use_ratio < 0) {
     std::cout << "mem graph use ratio should betweem 0 and 1." << std::endl;
     return -1;
@@ -617,21 +674,27 @@ int main(int argc, char** argv) {
           query_file, gt_file, disk_file_path, disk_graph_prefix, graph_rep_index_prefix,
           num_threads, K, W, num_nodes_to_cache, search_io_limit, Lvec, mem_L, sector_len,
           use_page_search, use_ratio, pq_ratio, deco_impl,
-          use_graph_rep_index, mem_graph_use_ratio, mem_emb_use_ratio, emb_search_ratio);
+          use_graph_rep_index, mem_graph_use_ratio, mem_emb_use_ratio, emb_search_ratio,
+          enable_delta, delta_wal_path, delta_max_points, delta_fsync_every,
+          delta_fsync_interval_ms, delete_filter_slack, delta_ops_path);
     else if (data_type == std::string("int8"))
       return search_disk_index<int8_t>(
           metric, index_path_prefix, pq_path_prefix, mem_index_path, mem_sample_path, result_path_prefix,
           query_file, gt_file, disk_file_path, disk_graph_prefix, graph_rep_index_prefix,
           num_threads, K, W, num_nodes_to_cache, search_io_limit, Lvec, mem_L, sector_len,
           use_page_search, use_ratio, pq_ratio, deco_impl,
-          use_graph_rep_index, mem_graph_use_ratio, mem_emb_use_ratio, emb_search_ratio);
+          use_graph_rep_index, mem_graph_use_ratio, mem_emb_use_ratio, emb_search_ratio,
+          enable_delta, delta_wal_path, delta_max_points, delta_fsync_every,
+          delta_fsync_interval_ms, delete_filter_slack, delta_ops_path);
     else if (data_type == std::string("uint8"))
       return search_disk_index<uint8_t>(
           metric, index_path_prefix, pq_path_prefix, mem_index_path, mem_sample_path, result_path_prefix,
           query_file, gt_file, disk_file_path, disk_graph_prefix, graph_rep_index_prefix,
           num_threads, K, W, num_nodes_to_cache, search_io_limit, Lvec, mem_L, sector_len,
           use_page_search, use_ratio, pq_ratio, deco_impl,
-          use_graph_rep_index, mem_graph_use_ratio, mem_emb_use_ratio, emb_search_ratio);
+          use_graph_rep_index, mem_graph_use_ratio, mem_emb_use_ratio, emb_search_ratio,
+          enable_delta, delta_wal_path, delta_max_points, delta_fsync_every,
+          delta_fsync_interval_ms, delete_filter_slack, delta_ops_path);
     else {
       std::cerr << "Unsupported data type. Use float or int8 or uint8"
                 << std::endl;

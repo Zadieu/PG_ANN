@@ -13,6 +13,7 @@ else()
         logger.cpp utils.cpp
         gorgeous/deco_index.cpp gorgeous/index_search.cpp
         gorgeous/index_search_dup_graph.cpp
+        dynamic/delta_index.cpp dynamic/deco_delta_index.cpp
         starling/page_search.cpp starling/pq_flash_index.cpp
         file_io_manager.cpp)
     add_library(${PROJECT_NAME} ${CPP_SOURCES})

@@ -9,6 +9,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
+#include <immintrin.h>
 #include <fstream>
 #include <iostream>
 #include <limits.h>

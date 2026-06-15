@@ -1,253 +1,103 @@
 # PipeGor_ANN
 
-## 中文说明
+PipeGor_ANN 是一个面向 SSD 外存近似最近邻检索（Approximate Nearest Neighbor Search, ANNS）的系统原型。项目以 DiskANN 的磁盘常驻图索引为基础，保留 Gorgeous 的页级磁盘布局和 graph-replicated 页面语义，引入 PipeANN 启发的运行时异步流水线读取，并在不可变 Base 索引之上补充 WAL + Delta + tombstone 的轻量写入覆盖层。
 
-PipeGor_ANN 是一个基于 Gorgeous 改造的磁盘常驻近似最近邻搜索项目。我们的核心目标不是重新设计一套磁盘索引格式，而是在 Gorgeous 已有磁盘结构和查询逻辑基础上，引入 PipeANN 风格的运行时流水线读取，使 SSD 读取和 CPU 计算尽可能重叠。
+项目目标可以概括为：
 
-简单来说：
+- 在低内存、SSD 外存和高召回场景下，提高外存图搜索的吞吐和延迟表现。
+- 在不重新定义 Gorgeous 磁盘文件格式的前提下，通过查询执行策略优化获得收益。
+- 提供最小可用的动态写入能力，使插入、删除和 WAL recovery 能够在查询结果中可见。
+- 保持实验可复现，统一输出 QPS、延迟、Recall@K、Graph IO、pipeline useful/wasted 和 Delta 扫描开销等指标。
 
-```text
-Gorgeous:
-  按搜索过程一批一批读取磁盘页，读完后再做 CPU 计算和候选扩展。
+## 项目概览
 
-PipeGor_ANN:
-  保留 Gorgeous 的磁盘布局和邻接表缓存思想，
-  但在查询过程中把未来可能需要的图页提前发起 I/O，
-  让磁盘读取和 CPU 处理并行进行。
-```
+Agent 长时记忆检索通常会持续接收新增记忆、删除过期记忆，并频繁执行 Top-K 语义检索。当记忆向量和图索引规模超过物理内存后，系统瓶颈会集中在 SSD 随机读、图邻接表访问、缓存命中率和写入放大上。PipeGor_ANN 将这个问题拆成读优化主线和轻量写入覆盖层两部分：Base DiskANN/Gorgeous 索引负责大规模稳定数据，运行时流水线负责隐藏随机读等待，Delta 覆盖层负责小规模在线更新。
 
-## 与 Gorgeous 的关系
+![Agent 场景下向量 I/O 系统](assets/Agent场景下向量IO系统.png)
 
-本项目目前使用的 Gorgeous baseline 是：
+PipeGor_ANN 当前不是完整在线向量数据库服务，而是一个面向系统实验和竞赛评测的 C++ 原型。仓库提供索引构建、布局生成、搜索 benchmark、对比脚本、参数调优脚本和 Delta 写优化入口。
 
-```text
-/home/dell/projects/Gorgeous-baseline
-```
+## 核心 Idea 与算法简述
 
-在对比实验中，Gorgeous baseline 和 PipeGor_ANN 可以使用同一份磁盘文件：
+PipeGor_ANN 的核心思想是：**保持 Gorgeous 磁盘布局不变，将优化集中在查询运行时。** Gorgeous 通过 graph page 和 graph-replicated page 提高单次磁盘读取的信息密度；PipeGor_ANN 在此基础上重新组织查询执行过程，使候选维护、PQ 距离计算、图页读取、页面解析和邻居扩展尽可能并行推进。
 
-```text
-/home/dell/data/gorgeous/sift1M/M4_R64_L128/_disk.index
-/home/dell/data/gorgeous/sift1M/M4_R64_L128/GRAPH_CACHE_INDEX/_graph_rep.index
-```
+![PipeGor_ANN 核心 idea](assets/PipeGorANN核心idea.png)
 
-其中：
+读路径主要包含以下机制：
 
-```text
-_disk.index
-  原始 Gorgeous/Starling 风格磁盘文件。每个磁盘页保存节点向量和对应邻接表。
+1. **候选驱动异步图页读取**  
+   查询线程维护候选集合、访问集合、AIO in-flight 请求和完成事件队列。候选节点不在内存图缓存中，且当前流水线宽度仍有余量时，系统提前提交图页读取请求；CPU 处理已返回页面时，SSD 可以继续服务后续候选。
 
-_graph_rep.index
-  Gorgeous 论文中的 graph-replicated 磁盘结构。
-  它除了保存当前节点的信息，还会额外复制部分邻居的邻接表。
-```
+2. **动态 pipe width 控制**  
+   直接把流水线宽度开到 beam width 容易造成低质量预读。PipeGor_ANN 根据搜索宽度 `L`、beam width、线程数和全局队列深度预算选择保守初始宽度，并在搜索推进过程中逐步放宽。
 
-需要强调的是：PipeGor_ANN 的主要贡献不是创造新的磁盘文件格式。我们在实验中尽量使用和 Gorgeous baseline 相同的磁盘结构，然后只改变查询执行策略。这样对比更公平，性能差异主要来自流水线调度，而不是磁盘布局不同。
+3. **graph-rep 邻接表复用**  
+   Gorgeous 的 graph-replicated 页面可能已经携带若干邻居的复制邻接表。PipeGor_ANN 在页面解析时把这些邻接表登记到 `loaded_nbrs`，后续候选命中时直接展开，跳过重复 graph I/O。
 
-## 我们做了什么
+4. **精确向量重排与统计闭环**  
+   PQ 过滤和流水线读取服务于候选发现，最终 Top-K 仍通过原始向量距离精排保证质量。benchmark 额外记录 `PipeSub`、`PipeUse%`、`PipeWst`、`Graph IO`、`Emb IO` 和 refinement 时间，用于解释性能来源。
 
-### 1. 查询阶段的流水线图读取
+写路径采用轻量 L0 覆盖层：
 
-Gorgeous 原始查询路径更偏向同步批处理：搜索到一批候选点后，读取它们所在的磁盘页，然后再继续做邻接表展开、PQ 距离计算和精排。
+- Base 索引保持只读，不在线原地修改 `_disk.index`、PQ 文件、partition layout 或 graph-rep 页面。
+- 插入和删除先顺序追加到 WAL，再更新内存 Delta Index 或 Base tombstone。
+- 查询时先执行原有 Base page search，再对 live Delta 做 exact scan，最后过滤 tombstone 并合并 Top-K。
+- 当 Delta 规模过大或 tombstone 比例过高时，应触发离线 rebuild/merge。
 
-PipeGor_ANN 在这个过程中增加了流水线图读取：
+## 三项创新点
 
-```text
-CPU 正在处理当前已经读回来的节点
-        +
-SSD 同时读取后续可能要访问的图页
-```
+![PipeGor_ANN 三项核心创新](assets/三项创新点.png)
 
-这样做的好处是：当 CPU 计算和 SSD I/O 都有空闲时，可以隐藏一部分 I/O 等待时间，提高 QPS 并降低平均延迟。
+### 1. 布局保持下的候选驱动流水线搜索
 
-主要实现位置：
+PipeGor_ANN 没有通过重新生成磁盘布局来获得额外优势，而是复用 Gorgeous baseline 的主要文件结构，将优化集中在运行时调度层。这样可以更公平地比较 Gorgeous baseline 与 PipeGor_ANN，也能更清楚地解释性能提升来自 SSD I/O 与 CPU 计算的重叠。
 
-```text
-src/gorgeous/index_search.cpp
-src/gorgeous/index_search_dup_graph.cpp
-```
+### 2. graph-rep 页面内容的运行时复用
 
-其中：
+graph-replicated layout 提供了页面内复制邻接表，但运行时如果不识别这些信息，仍可能重复读取相同邻接表。PipeGor_ANN 显式维护 `loaded_nbrs`，把已返回页面中的复制邻接表转化为后续候选可复用状态，从而减少重复 Graph IO。
 
-```text
-index_search.cpp
-  对应普通 _disk.index 查询路径。
+### 3. 不可变 Base 索引上的 WAL + Delta + tombstone 覆盖层
 
-index_search_dup_graph.cpp
-  对应 _graph_rep.index 查询路径。
-```
+动态写入能力以最小侵入方式接入系统。Base 索引仍由 Gorgeous/DiskANN 风格文件承载，在线写入只进入 append-only WAL 和内存 Delta；删除通过 tombstone 生效；查询末端完成 Delta exact scan、Base tombstone 过滤和 Top-K merge。该设计已经覆盖插入、删除、恢复和查询可见性，但仍把大规模 graph-aware merge 留给离线 rebuild。
 
-### 2. 面向 Gorgeous 磁盘结构的邻接表筛选
+## 重要实验结果
 
-Gorgeous 的 graph-replicated 磁盘页可能已经把部分邻居的邻接表一起读回来了。因此 PipeGor_ANN 在流水线调度时不会盲目再次读取同一个邻接表，而是先判断这个邻接表是否已经随着之前的磁盘页被带回。
+读优化主实验来自 `results3` 公平设置：Gorgeous、PG_ANN 和 PipeANN 均使用 `mem_L=10`，因此适合比较 PipeGor_ANN 在相同内存导航条件下的收益。
 
-也就是说，我们不是简单照搬 PipeANN 的提前读取，而是利用 Gorgeous 的磁盘结构做筛选：
+| 线程数 | L | PG_ANN QPS | Gorgeous QPS | 加速比 | PG_ANN Recall@10 | Graph IO（PG/G） |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 32 | 35 | 24210.37 | 13586.39 | 1.78x | 90.78% | 26.55 / 55.03 |
+| 32 | 40 | 21910.35 | 12582.23 | 1.74x | 92.37% | 29.36 / 60.19 |
+| 64 | 35 | 26688.10 | 14537.32 | 1.84x | 90.77% | 26.55 / 53.34 |
+| 64 | 40 | 24773.33 | 13403.82 | 1.85x | 92.34% | 29.34 / 58.08 |
 
-```text
-如果邻接表已经在已读页面中：
-  直接展开，避免重复 I/O
+关键结论：
 
-如果邻接表还没有被读回：
-  再作为流水线候选提交给 SSD
-```
+- 在 Recall@10 高于 85% 的区间，PG_ANN 相比 Gorgeous 获得约 `1.7x--1.9x` QPS 提升。
+- 代表性配置下 Graph IO 约减少一半，例如 64 线程、`L=40` 时从 `58.08` 降至 `29.34`。
+- 流水线有效率较高，主实验代表性配置的 `PipeUse%` 接近 `98.8%`，说明预读请求大部分被搜索实际使用。
+- 增强配置 `results2` 中最高达到 `3.44x` 加速，但该组 Gorgeous 与 PG_ANN 的 `mem_L` 不完全相同，因此只作为增强潜力展示。
 
-这部分机制用于减少无效读取，尤其适合 `_graph_rep.index` 这种已经包含邻接表复制的磁盘结构。
+写优化验证采用小规模回归索引和 SIFT1M 普通 page-search 路径：
 
-### 3. 动态流水线宽度
+- SIFT1M 上插入靠近查询的 Delta 向量并删除 Base top id 后，Top-1 可由自动分配的 Delta id `1000001` 补入。
+- 重新加载同一 WAL 后，Top-K 结果序列保持一致，说明 WAL recovery 能恢复 live Delta 和 Base tombstone 状态。
+- Delta 为空时，启用覆盖层后 QPS 仅下降 `0.98%`。
+- Delta 增长时 Graph IO 基本不变，额外成本主要表现为 `Ext Cmp` 随 live Delta 规模线性增加，符合 flat exact scan 的设计预期。
 
-直接把流水线宽度一开始开到 `beam_width` 并不稳定。我们在实验中发现，尤其是在小 `L` 或高线程下，过早提交太多 I/O 会带来大量无效预读，导致带宽浪费、延迟上升，甚至 recall 下降。
+## 系统安装与环境配置
 
-因此 PipeGor_ANN 增加了动态流水线宽度：
+推荐环境：
 
-```text
-搜索开始时使用较小宽度
-  -> 随着搜索候选逐渐稳定，慢慢增大宽度
-  -> 高线程下根据全局 QD budget 限制每个 query 的最大宽度
-```
+- Linux x86_64
+- GCC/G++ with C++14/C++17 support
+- CMake
+- libaio
+- Boost
+- gperftools
+- Intel oneAPI MKL / OpenMP，或兼容 MKL/OpenMP 环境
 
-当前 graph-replicated 路径支持以下环境变量：
-
-```bash
-GORGEOUS_PIPELINED_GRAPH_IO=1
-GORGEOUS_PIPELINED_GRAPH_DYNAMIC_WIDTH=1
-GORGEOUS_PIPELINED_GRAPH_PIPE_MAX=auto
-GORGEOUS_PIPELINED_GRAPH_QD_BUDGET=256
-GORGEOUS_PIPELINED_GRAPH_RAMP_STEP=auto
-GORGEOUS_PIPEANN_PIPE_START=auto
-GORGEOUS_PIPEANN_PIPE_MIN=1
-GORGEOUS_PIPEANN_L_AWARE_PIPE_START=1
-GORGEOUS_PIPEANN_L_AWARE_LOW_L=12
-GORGEOUS_PIPEANN_L_AWARE_HIGH_L=18
-```
-
-最近一次 SIFT1M graph-rep 对比中，加入动态宽度后效果明显更稳定：
-
-```text
-测试矩阵:
-  T = 8, 16, 32, 64
-  L = 15, 20, 25, 30, 35, 40
-
-修改前:
-  平均 QPS gain:    +0.66%
-  平均延迟改善:     +0.48%
-  胜场:             11 / 24
-  平均 recall 差:   -1.10
-
-加入 graph-rep 动态流水线宽度后:
-  平均 QPS gain:    +4.03%
-  平均延迟改善:     +3.53%
-  胜场:             18 / 24
-  平均 recall 差:   -1.05
-```
-
-结果文件示例：
-
-```text
-/home/dell/data/gorgeous/sift1M/graph_rep_after_dynamic/run_20260612_143607/graph_rep_compare.csv
-```
-
-### 4. 离线自适应参数预测器
-
-除了运行时动态宽度，我们还实现了一个 VDTuner 风格的离线参数预测器。它不是在每个 query 执行时调用神经网络，而是在正式测试之前使用历史实验记录学习参数和性能之间的关系，然后推荐下一轮应该测试或使用的流水线参数。
-
-整体流程是：
-
-```text
-1. 离线采样
-   对不同 T、L、pipe_max、qd_budget、pipe_start、ramp_step 等参数组合进行小规模测试。
-
-2. 记录实验历史
-   保存每个组合相对 baseline 的 QPS gain、recall drop、latency、graph I/O 等指标。
-
-3. 训练/拟合推荐器
-   使用历史记录拟合一个 surrogate model 或 MLP 模型。
-
-4. 生成推荐 profile
-   对新的 T/L 或新的数据集，预测哪些参数组合可能收益更高且 recall 损失可控。
-
-5. 回测验证
-   把推荐 profile 交给 offline_tune_pipegor.py，再实际运行验证。
-```
-
-相关脚本：
-
-```text
-scripts/offline_tune_pipegor.py
-  离线采样和回测工具。可以选择 baseline 为 PipeGorANN pipeline-off 或 Gorgeous。
-
-scripts/model_tune_pipegor.py
-  VDTuner 风格的轻量 surrogate 推荐器，基于历史记录和近邻加权预测。
-
-scripts/mlp_tune_pipegor.py
-  sklearn MLP 版本的推荐器。
-
-scripts/torch_mlp_tune_pipegor.py
-  PyTorch MLP 版本的推荐器，支持带 recall 约束的目标函数。
-```
-
-当前效果较好的预测器是 PyTorch MLP 约束版本。它不只是预测 `gain_pct` 和 `recall_drop`，而是使用带约束的目标：
-
-```text
-score = predicted_gain - recall_penalty * max(0, predicted_recall_drop - max_allowed_drop)
-```
-
-这样可以让推荐器优先选择：
-
-```text
-QPS 提升明显
-recall 损失不超过阈值
-参数不要过于激进
-```
-
-本地较好的配置示例：
-
-```text
-recall_penalty = 80
-min_pred_gain = 5
-max_recall_drop = 1.0
-```
-
-对应的一轮验证结果中，推荐器选择的参数整体平均收益为正，并且直接推荐为 pipeline 的候选大多数满足 recall 约束。这个工具后续可以扩展到其他数据集，而不需要每次都手工遍历完整参数网格。
-
-### 5. fallback 与 baseline 的含义
-
-在预测器里，`fallback` 表示当模型认为流水线在某个 `T/L` 下不划算，或者 recall 风险过高时，推荐退回 baseline 查询方式。
-
-这里的 baseline 可以有两种：
-
-```text
-PipeGorANN pipeline-off
-  使用 PipeGorANN 可执行文件，但关闭流水线。
-  这个模式用于判断我们的改动本身有没有额外开销。
-
-Gorgeous baseline
-  使用 /home/dell/projects/Gorgeous-baseline 中的 Gorgeous 原始实现。
-  这个模式用于和真正的 Gorgeous 原项目进行性能对比。
-```
-
-`graph-rep` 则表示是否使用 `_graph_rep.index` 磁盘结构。它不是 PipeGor_ANN 的必要条件；PipeGor_ANN 也可以在普通 `_disk.index` 路径上运行流水线机制。
-
-## Repository Layout
-
-```text
-include/                 Public headers and search utilities
-src/gorgeous/            Gorgeous/PipeGor search implementation
-tests/                   Build/search utilities and executable entry points
-scripts/                 Main benchmark and comparison scripts
-scripts/archive/         Old exploratory scripts kept for reference
-graph_partition/         Graph partitioning and oneTBB-related components
-assets/                  Existing figures used by the original project README
-```
-
-The most important executable for search experiments is:
-
-```text
-build/tests/search_disk_index
-```
-
-## Dependencies
-
-Install the common system dependencies:
+安装常用依赖：
 
 ```bash
 sudo apt update
@@ -257,80 +107,111 @@ sudo apt install -y \
   g++ \
   libaio-dev \
   libboost-all-dev \
-  libgoogle-perftools-dev \
-  libmkl-full-dev
+  libgoogle-perftools-dev
 ```
 
-The project also depends on oneTBB. In our local setup, oneTBB is already placed
-under the project tree through the existing Gorgeous build structure.
-
-## Build
-
-From the project root:
+如果发行版或本地软件源提供 MKL 包，也可以安装：
 
 ```bash
-cd /home/dell/projects/PipeGor_ANN
-cmake --build build -j2 --target search_disk_index
+sudo apt install -y libmkl-full-dev
 ```
 
-If the build directory does not exist yet, configure it first:
+如果系统未安装 Intel oneAPI MKL，请根据服务器环境安装 MKL，并确认 `CMakeLists.txt` 中的 `MKL_ROOT`、`OMP_PATH` 能指向有效路径。当前 CMake 默认 Linux MKL 路径类似：
+
+```text
+/opt/intel/oneapi/mkl/latest
+/opt/intel/oneapi/compiler/2022.0.2/linux/compiler/lib/intel64_lin/
+```
+
+初始化子模块：
 
 ```bash
-cd /home/dell/projects/PipeGor_ANN
+git submodule update --init --recursive
+```
+
+当前仓库使用的子模块包括：
+
+- `gperftools`: `https://github.com/gperftools/gperftools.git`
+- `graph_partition/oneTBB`: `https://github.com/uxlfoundation/oneTBB.git`
+
+## 构建与运行方式
+
+### 1. 构建搜索可执行程序
+
+从仓库根目录执行：
+
+```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j2 --target search_disk_index
+cmake --build build -j$(nproc) --target search_disk_index
 ```
 
-## Run The Three-Way Comparison
+主要搜索入口为：
 
-The main comparison script is:
+```text
+build/tests/search_disk_index
+```
+
+常用构建目标还包括：
+
+```text
+build/tests/build_disk_index
+build/tests/build_memory_index
+build/tests/search_memory_index
+```
+
+### 2. 使用脚本完成完整流程
+
+进入脚本目录：
+
+```bash
+cd scripts
+```
+
+按顺序执行：
+
+```bash
+bash run_benchmark.sh release build
+bash run_benchmark.sh release build_mem
+bash run_benchmark.sh release split_graph
+bash run_benchmark.sh release gr_layout
+bash run_benchmark.sh release search knn
+```
+
+各阶段含义：
+
+- `build`: 构建磁盘索引和 PQ 数据。
+- `build_mem`: 构建采样内存导航图。
+- `split_graph`: 拆分图结构和向量数据。
+- `gr_layout`: 生成 graph-replicated layout。
+- `search knn`: 运行 KNN 查询 benchmark。
+
+### 3. 三方对比实验
+
+主要脚本：
 
 ```text
 scripts/compare_three_way_sift1m_t8.sh
 ```
 
-It compares:
+该脚本用于比较：
 
-```text
-PipeANN baseline
-Gorgeous original baseline
-PipeGor_ANN
-```
+- PipeANN baseline
+- Gorgeous original baseline
+- PipeGor_ANN
 
-Default baseline executable paths:
-
-```text
-PipeANN:
-  /home/dell/projects/PipeANN-official-20260604/PipeANN-main/build/tests/search_disk_index
-
-Gorgeous original:
-  /home/dell/projects/Gorgeous-baseline/build/tests/search_disk_index
-
-PipeGor_ANN:
-  /home/dell/projects/PipeGor_ANN/build/tests/search_disk_index
-```
-
-Example SIFT1M run:
+从仓库根目录执行：
 
 ```bash
-cd /home/dell/projects/PipeGor_ANN
-
 env \
-  RESULT_ROOT=/home/dell/data/gorgeous/sift1M/three_way_t8 \
-  L_LIST='18 20 24 28 32 40 50 64 80 96 128 160' \
+  RESULT_ROOT=/path/to/results \
+  L_LIST='25 30 35 40 50 60 80 120 200' \
   MEM_L=10 \
-  THREADS=8 \
-  WIDTH=8 \
+  THREADS=32 \
+  WIDTH=32 \
   bash scripts/compare_three_way_sift1m_t8.sh
 ```
 
-Each run creates a timestamped directory:
-
-```text
-${RESULT_ROOT}/run_YYYYmmdd_HHMMSS/
-```
-
-Important output files:
+运行后会生成时间戳目录，常见输出包括：
 
 ```text
 PARAMS.txt
@@ -340,95 +221,157 @@ pipegor.log
 compare.csv
 ```
 
-## Key Script Parameters
+### 4. graph-rep 对比实验
+
+主要脚本：
 
 ```text
-L_LIST
-  Search list depths to test.
-
-THREADS
-  Number of search threads.
-
-WIDTH
-  Beam width / I/O width.
-
-MEM_L
-  Memory index search depth.
-
-PIPEGOR_L_AWARE_LOW_L
-  L value at which PipeGor starts from a smaller pipe width.
-  Default: 12
-
-PIPEGOR_L_AWARE_HIGH_L
-  L value at which PipeGor starts from full beam width.
-  Default: 18
+scripts/compare_graph_rep_sift1m.sh
 ```
 
-Dataset and index paths can also be overridden through environment variables in
-`scripts/compare_three_way_sift1m_t8.sh`.
+该脚本用于比较 Gorgeous graph-replicated layout 与 PipeGor_ANN graph-rep 查询路径，适合观察 `loaded_nbrs` 复用、Graph IO 变化和流水线有效性。建议同样从仓库根目录执行。
 
-## Latest Local SIFT1M Check
+### 5. 关键运行参数
 
-After cleanup, we reran PipeGor_ANN against both baselines on SIFT1M with:
+常用环境变量和命令行参数：
+
+| 参数 | 含义 |
+| --- | --- |
+| `L_LIST` / `-L` | 搜索宽度，影响召回率、候选数量和查询开销 |
+| `THREADS` / `--num_threads` | 查询线程数 |
+| `WIDTH` / `--beamwidth` | beam width / I/O width |
+| `MEM_L` / `--mem_L` | 内存导航图搜索深度 |
+| `DECO_IMPL=1` | 使用 Gorgeous/PipeGor 风格查询实现 |
+| `USE_DISK_GRAPH_CACHE_INDEX=1` | 使用 graph-replicated layout |
+| `GORGEOUS_PIPELINED_GRAPH_IO=1` | 启用流水线 graph I/O |
+| `GORGEOUS_PIPELINED_GRAPH_DYNAMIC_WIDTH=1` | 启用动态流水线宽度 |
+
+## 写优化 Delta 覆盖层使用说明
+
+Delta 覆盖层用于在不可变 Base 索引上提供小规模动态更新能力。查询路径如下图所示：Base search 先返回候选；若存在 Base tombstone，则进行 over-fetch；Delta 分支对 live entry 做 exact scan；最后统一过滤、去重和排序输出 Top-K。
+
+![写优化查询合并图](assets/写优化查询合并图.png)
+
+### 1. 启用 Delta
+
+Delta 需要 `deco_impl` 路径。运行 `search_disk_index` 时使用以下参数：
+
+```bash
+--enable_delta=1 \
+--delta_wal_path /path/to/delta.wal \
+--delta_ops_path /path/to/delta_ops.txt \
+--delta_max_points 10000 \
+--delta_fsync_every 100 \
+--delta_fsync_interval_ms 100 \
+--delete_filter_slack 32
+```
+
+参数说明：
+
+| 参数 | 含义 |
+| --- | --- |
+| `--enable_delta=1` | 启用 WAL + Delta + tombstone 覆盖层 |
+| `--delta_wal_path` | Delta WAL 路径；启用 Delta 时必填 |
+| `--delta_ops_path` | 可选文本操作文件，用于 benchmark 前回放 insert/delete |
+| `--delta_max_points` | live Delta 最大容量；默认按 Base 规模设置，上限通常为 `10000` |
+| `--delta_fsync_every` | 每多少条 WAL 记录触发一次 fsync |
+| `--delta_fsync_interval_ms` | 按时间窗口触发 fsync |
+| `--delete_filter_slack` | Base tombstone 存在时 over-fetch 的补偿窗口 |
+
+### 2. Delta ops 文本格式
+
+`delta_ops_path` 支持以下格式：
 
 ```text
-T = 8
-W = 8
-MEM_L = 10
-L = 18 20 24 28 32 40 50 64 80 96 128 160
+# 自动分配 Delta tag
+insert auto <v0> <v1> ... <v127>
+
+# 显式指定 tag
+insert <tag> <v0> <v1> ... <v127>
+
+# 删除 Base id 或 Delta id
+delete <tag>
 ```
 
-Representative high-recall results:
+说明：
+
+- `insert` 也可写为 `i`。
+- `delete` 也可写为 `erase` 或 `d`。
+- `#` 后内容视为注释。
+- 向量维度必须与当前索引维度一致。
+- 显式 tag 不能与 live Base 或 live Delta 冲突。
+- 删除不存在 tag 时会记录忽略信息，不追加无效更新语义。
+
+### 3. 能力边界
+
+当前 Delta 层定位为 MVP 级 L0 写缓冲：
+
+- 已实现：WAL 追加、WAL recovery、Delta 插入、Delta 删除、Base tombstone、Delta exact scan、Top-K merge。
+- 未实现：在线 graph-aware merge、在线重连 Base 图、在线原地改写 graph-rep 页面、自动后台 compaction 服务。
+- 建议：当 live Delta 达到上限，或 Base tombstone 比例持续升高时，触发离线 rebuild，把 live Delta 合并回新的 Base 索引。
+
+## 仓库结构
 
 ```text
-L=64   PipeGor Recall@10 99.43  QPS 2987.69
-       vs PipeANN +34.89%, vs Gorgeous +1.99%
-
-L=96   PipeGor Recall@10 99.81  QPS 2199.52
-       vs PipeANN +42.47%, vs Gorgeous +2.19%
-
-L=128  PipeGor Recall@10 99.91  QPS 1773.50
-       vs PipeANN +55.19%, vs Gorgeous +5.61%
-
-L=160  PipeGor Recall@10 99.96  QPS 1436.05
-       vs PipeANN +52.52%, vs Gorgeous +4.86%
+include/                 公共头文件、索引接口、Delta 接口
+include/dynamic/         DeltaIndex 相关声明
+src/                     核心实现
+src/dynamic/             WAL + Delta + tombstone 覆盖层实现
+tests/                   build/search benchmark 入口
+tests/utils/             数据转换、ground truth、layout 工具
+scripts/                 构建、搜索、对比实验、参数调优脚本
+scripts/archive/         历史探索脚本
+graph_partition/         图划分与 oneTBB 相关组件
+assets/                  README 和报告使用的图示
+CMakeLists.txt           顶层构建配置
+LICENSE                  DiskANN MIT License
 ```
 
-The latest local chart artifacts were generated under the Codex work directory:
+关键实现文件：
 
-```text
-work/final_three_way_cleanup_t8_summary.csv
-work/final_three_way_cleanup_t8_recall.svg
-work/final_three_way_cleanup_t8_qps.svg
-work/final_three_way_cleanup_t8_latency.svg
-```
+| 文件 | 作用 |
+| --- | --- |
+| `src/gorgeous/index_search.cpp` | 普通 layout 上的 PipeGor/Gorgeous page search |
+| `src/gorgeous/index_search_dup_graph.cpp` | graph-replicated layout 上的查询与邻接表复用 |
+| `src/dynamic/delta_index.cpp` | WAL、Delta 插入删除、recovery、ops 回放 |
+| `src/dynamic/deco_delta_index.cpp` | Base search + Delta scan + Top-K merge 包装 |
+| `tests/search_disk_index.cpp` | 磁盘索引 benchmark 统一入口 |
 
-## Notes For Development
+## 核心参考论文与 GitHub 地址
 
-- Keep the graph-replicated mainline simple. New experimental ideas should start
-  behind a small, clearly named branch or script, then be deleted or archived if
-  they do not help.
-- Re-run both baselines whenever comparing performance. The current comparison
-  script intentionally reruns PipeANN and Gorgeous in the same test round.
-- Prefer recall-matched QPS comparisons over only same-`L` comparisons when
-  presenting final results.
-- Use `scripts/archive/` only as historical reference; main experiments should
-  use `scripts/compare_three_way_sift1m_t8.sh`.
+### 外存 ANN 基线与读优化
 
-## Citation
+- DiskANN: Fast Accurate Billion-point Nearest Neighbor Search on a Single Node  
+  GitHub: https://github.com/microsoft/DiskANN
 
-PipeGor_ANN is an experimental project built on Gorgeous. For the original data
-layout idea, cite Gorgeous:
+- Starling: An I/O-Efficient Disk-Resident Graph Index Framework for High-Dimensional Vector Similarity Search  
+  Paper: https://arxiv.org/abs/2401.02116  
+  GitHub: https://github.com/zilliztech/starling
 
-```bibtex
-@article{yin2025gorgeous,
-  title={Gorgeous: Revisiting the Data Layout for Disk-Resident High-Dimensional Vector Search},
-  author={Yin, Peiqi and Yan, Xiao and Zhou, Qihui and Li, Hui and Li, Xiaolu and Zhang, Lin and Wang, Meiling and Yao, Xin and Cheng, James},
-  journal={arXiv preprint arXiv:2508.15290},
-  year={2025}
-}
-```
+- Gorgeous: Revisiting the Data Layout for Disk-Resident High-Dimensional Vector Search  
+  Paper: https://arxiv.org/abs/2508.15290  
+  GitHub: https://github.com/yinpeiqi/Gorgeous
+
+- PipeANN: Achieving Low-Latency Graph-Based Vector Search via Aligning Best-First Search Algorithm with SSD  
+  Paper: https://www.usenix.org/conference/osdi25/presentation/guo  
+  GitHub: https://github.com/thustorage/PipeANN
+
+### 动态更新与写优化
+
+- FreshDiskANN: A Fast and Accurate Graph-Based ANN Index for Streaming Similarity Search  
+  Paper: https://arxiv.org/abs/2105.09613
+
+- SPFresh: Incremental In-Place Update for Billion-Scale Vector Search  
+  Paper: https://arxiv.org/abs/2410.14452
+
+- In-Place Updates of a Graph Index for Streaming Approximate Nearest Neighbor Search  
+  Paper: https://arxiv.org/abs/2502.13826
+
+- LSM-VEC: A Large-Scale Disk-Based System for Dynamic Vector Search  
+  Paper: https://arxiv.org/abs/2505.17152
 
 ## License
 
-This repository follows the license files included in the project.
+This repository is derived from DiskANN/Gorgeous-related code paths and currently follows the root `LICENSE`, which contains the DiskANN MIT License.
+
+See `LICENSE` for details.

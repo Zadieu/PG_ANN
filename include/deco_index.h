@@ -20,6 +20,7 @@
 #include "index.h"
 #include "thread_pool.h"
 #include "search_utils.h"
+#include "dynamic/delta_index.h"
 
 namespace diskann {
   template<typename T>
@@ -63,6 +64,45 @@ namespace diskann {
         const float pq_filter_ratio = 1.2f, const float emb_search_ratio = 1.0f, QueryStats *stats = nullptr);
 
     DISKANN_DLLEXPORT void page_search_dup_graph(
+        const T *query, const _u64 query_num, const _u64 query_aligned_dim, const _u64 k_search, const _u32 mem_L,
+        const _u64 l_search, std::vector<_u64>& indices_vec, std::vector<float>& distances_vec,
+        const _u64 beam_width, const _u32 io_limit,
+        const float pq_filter_ratio = 1.2f, const float emb_search_ratio = 1.0f, QueryStats *stats = nullptr);
+
+    DISKANN_DLLEXPORT void load_delta_wal(
+        const std::string& wal_path, _u64 max_delta_points = 0,
+        _u32 fsync_every = 100, _u32 fsync_interval_ms = 100,
+        _u64 delete_filter_slack = 0);
+
+    DISKANN_DLLEXPORT void apply_delta_ops_file(const std::string& ops_path);
+
+    DISKANN_DLLEXPORT DeltaOpStatus delta_insert(_u64 tag,
+                                                 const std::vector<T>& vector);
+
+    DISKANN_DLLEXPORT DeltaOpStatus delta_insert_auto(
+        const std::vector<T>& vector, _u64& assigned_tag);
+
+    DISKANN_DLLEXPORT DeltaOpStatus delta_erase(_u64 tag);
+
+    DISKANN_DLLEXPORT bool has_delta_index() const {
+      return delta_index_ != nullptr;
+    }
+
+    DISKANN_DLLEXPORT _u64 delta_live_size() const {
+      return delta_index_ == nullptr ? 0 : delta_index_->live_size();
+    }
+
+    DISKANN_DLLEXPORT _u64 delta_deleted_base_size() const {
+      return delta_index_ == nullptr ? 0 : delta_index_->deleted_base_size();
+    }
+
+    DISKANN_DLLEXPORT void page_search_with_delta(
+        const T *query, const _u64 query_num, const _u64 query_aligned_dim, const _u64 k_search, const _u32 mem_L,
+        const _u64 l_search, std::vector<_u64>& indices_vec, std::vector<float>& distances_vec,
+        const _u64 beam_width, const _u32 io_limit,
+        const float pq_filter_ratio = 1.2f, const float emb_search_ratio = 1.0f, QueryStats *stats = nullptr);
+
+    DISKANN_DLLEXPORT void page_search_dup_graph_with_delta(
         const T *query, const _u64 query_num, const _u64 query_aligned_dim, const _u64 k_search, const _u32 mem_L,
         const _u64 l_search, std::vector<_u64>& indices_vec, std::vector<float>& distances_vec,
         const _u64 beam_width, const _u32 io_limit,
@@ -198,6 +238,9 @@ namespace diskann {
 
     // in-memory navigation graph
     std::unique_ptr<Index<T, uint32_t>> mem_index_;
+
+    // append-only L0 overlay for MVP dynamic writes
+    std::unique_ptr<DeltaIndex<T>> delta_index_;
 
     // page search
     bool use_graph_rep_index_;
